@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全社員 過去比較表 | DigiMan</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-blue: #1155cc;
+            --primary-cyan: #00a2da;
+            --primary-yellow: #e8d335;
+            --primary-red: #e04f24;
+            --blue-50: #e7eefb;
+            --blue-100: #c2d6f9;
+            --cyan-50: #eff8fa;
+            --yellow-50: #fbf8e2;
+            --red-50: #ffeae4;
+            --gray-50: #fafaff;
+            --gray-100: #f9f9fc;
+            --gray-200: #e4e8ef;
+            --gray-300: #d0d4dc;
+            --gray-400: #b1b4ba;
+            --gray-500: #787b7f;
+            --gray-600: #434547;
+            --text-dark: #434547;
+            --text-light: #787b7f;
+            --bg-white: #FFFFFF;
+            --bg-light: #f9f9fc;
+            --border-color: #e4e8ef;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', 'Poppins', sans-serif;
+            background: var(--bg-light);
+            min-height: 100vh;
+            color: var(--text-dark);
+            padding: 0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .top-header {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo svg {
+            width: 40px;
+            height: 40px;
+        }
+
+        .logo-text {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--primary-blue);
+        }
+
+        .page-title-text {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-left: 20px;
+            padding-left: 20px;
+            border-left: 1px solid var(--border-color);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .last-updated {
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        .refresh-btn {
+            background: var(--primary-blue);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .refresh-btn:hover {
+            background: #1548B8;
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .dashboard {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--primary-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 18px;
+            background: var(--primary-blue);
+            border-radius: 2px;
+        }
+
+        .filter-section {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+        }
+
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filter-row label {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .filter-row select {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--text-dark);
+            min-width: 120px;
+        }
+
+        .table-section {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px 16px;
+            text-align: right;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .data-table th {
+            background: var(--gray-100);
+            font-weight: 600;
+            color: var(--text-dark);
+            position: sticky;
+            top: 0;
+        }
+
+        .data-table th:first-child,
+        .data-table td:first-child {
+            text-align: left;
+            position: sticky;
+            left: 0;
+            background: var(--bg-white);
+            z-index: 1;
+        }
+
+        .data-table th:first-child {
+            background: var(--gray-100);
+            z-index: 2;
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--gray-50);
+        }
+
+        .data-table tbody tr:hover td:first-child {
+            background: var(--gray-50);
+        }
+
+        .metric-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .metric-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            color: var(--text-light);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .metric-btn:hover {
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+        }
+
+        .metric-btn.active {
+            background: var(--primary-blue);
+            border-color: var(--primary-blue);
+            color: white;
+        }
+
+        .change-positive {
+            color: var(--primary-blue);
+        }
+
+        .change-negative {
+            color: var(--primary-red);
+        }
+
+        .total-row {
+            font-weight: 600;
+            background: var(--blue-50) !important;
+        }
+
+        .total-row td:first-child {
+            background: var(--blue-50) !important;
+        }
+
+        .error-message {
+            background: var(--red-50);
+            border: 1px solid var(--primary-red);
+            color: var(--primary-red);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: var(--bg-white);
+            border: 1px solid var(--primary-blue);
+            color: var(--primary-blue);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .nav-btn svg {
+            flex-shrink: 0;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-light);
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            .top-header {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px;
+            }
+
+            .dashboard {
+                padding: 15px;
+            }
+
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">データを読み込んでいます...</div>
+    </div>
+
+    <div class="top-header">
+        <div class="logo">
+            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="40" height="40" rx="8" fill="#1155cc"/>
+                <path d="M12 14h6v12h-6zM22 10h6v16h-6z" fill="white"/>
+            </svg>
+            <span class="logo-text">DigiMan</span>
+            <span class="page-title-text">全社員 過去比較表</span>
+        </div>
+        <div class="header-right">
+            <a href="file:///Users/ebineryota/all_staff_analysis.html" class="nav-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                分析ダッシュボード
+            </a>
+            <div class="last-updated" id="lastUpdated"></div>
+            <button class="refresh-btn" id="refreshBtn" onclick="refreshData()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                </svg>
+                更新
+            </button>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <div class="error-message" id="errorMessage"></div>
+
+        <!-- フィルター -->
+        <div class="filter-section">
+            <div class="filter-row">
+                <label>表示期間:</label>
+                <select id="monthRange" onchange="loadData()">
+                    <option value="3">過去3ヶ月</option>
+                    <option value="6" selected>過去6ヶ月</option>
+                    <option value="12">過去12ヶ月</option>
+                </select>
+                <label>案件:</label>
+                <select id="projectFilter" onchange="renderTables()">
+                    <option value="">全案件</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 月別推移表 -->
+        <div class="table-section">
+            <div class="section-title">月別推移表</div>
+            <div class="metric-selector" id="monthlyMetricSelector">
+                <button class="metric-btn active" data-metric="calls">架電数</button>
+                <button class="metric-btn" data-metric="pr">PR数</button>
+                <button class="metric-btn" data-metric="appo">アポ数</button>
+                <button class="metric-btn" data-metric="callTime">稼働時間</button>
+                <button class="metric-btn" data-metric="callToPR">架電toPR率</button>
+                <button class="metric-btn" data-metric="prToAppo">PRtoアポ率</button>
+                <button class="metric-btn" data-metric="callToAppo">架電toアポ率</button>
+                <button class="metric-btn" data-metric="callsPerHour">架電数/H</button>
+            </div>
+            <table class="data-table" id="monthlyTable">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- 担当者×月別表 -->
+        <div class="table-section">
+            <div class="section-title">担当者×月別表</div>
+            <div class="metric-selector" id="memberMetricSelector">
+                <button class="metric-btn active" data-metric="calls">架電数</button>
+                <button class="metric-btn" data-metric="pr">PR数</button>
+                <button class="metric-btn" data-metric="appo">アポ数</button>
+                <button class="metric-btn" data-metric="callTime">稼働時間</button>
+                <button class="metric-btn" data-metric="callToPR">架電toPR率</button>
+                <button class="metric-btn" data-metric="prToAppo">PRtoアポ率</button>
+                <button class="metric-btn" data-metric="callToAppo">架電toアポ率</button>
+                <button class="metric-btn" data-metric="callsPerHour">架電数/H</button>
+            </div>
+            <table class="data-table" id="memberMonthTable">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div class="footer">
+            &copy; DigiMan Inc.
+        </div>
+    </div>
+
+    <script>
+        // グローバル変数
+        let rawData = null;
+        let currentMonthlyMetric = 'calls';
+        let currentMemberMetric = 'calls';
+
+        // 除外する担当者
+        const EXCLUDED_MEMBERS = ['山田　香苗'];
+
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwG_1cvgfnnNuK9PuhmXJOSeBuS8kFzJbf-R1p0qvySu0BW8GYKJKCKzHJ4Ny11FtkV/exec';
+
+        const metricConfig = {
+            calls: { label: '架電数', format: 'number' },
+            pr: { label: 'PR数', format: 'number' },
+            appo: { label: 'アポ数', format: 'number' },
+            callTime: { label: '稼働時間', format: 'decimal' },
+            callToPR: { label: '架電toPR率', format: 'percent' },
+            prToAppo: { label: 'PRtoアポ率', format: 'percent' },
+            callToAppo: { label: '架電toアポ率', format: 'percent' },
+            callsPerHour: { label: '架電数/H', format: 'decimal' }
+        };
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        function formatDateLocal(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function formatValue(value, format) {
+            if (value === null || value === undefined) return '-';
+            switch (format) {
+                case 'number':
+                    return value.toLocaleString();
+                case 'decimal':
+                    return value.toFixed(1);
+                case 'percent':
+                    return value.toFixed(2) + '%';
+                default:
+                    return value;
+            }
+        }
+
+        async function loadData() {
+            const monthRange = parseInt(document.getElementById('monthRange').value);
+            const now = new Date();
+            const startDate = new Date(now.getFullYear(), now.getMonth() - monthRange + 1, 1);
+            const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+            const apiUrl = `${API_URL}?type=rawdata&source=all_staff&startDate=${formatDateLocal(startDate)}&endDate=${formatDateLocal(endDate)}`;
+
+            showLoading();
+            try {
+                const response = await fetch(apiUrl);
+                rawData = await response.json();
+                if (rawData.error) throw new Error(rawData.error);
+
+                // 除外メンバーをフィルタリング
+                if (rawData.records) {
+                    rawData.records = rawData.records.filter(r => !EXCLUDED_MEMBERS.includes(r.name));
+                }
+
+                populateProjectFilter();
+                renderTables();
+                document.getElementById('lastUpdated').textContent = `最終更新: ${new Date().toLocaleString('ja-JP')}`;
+            } catch (error) {
+                console.error('Data load error:', error);
+                document.getElementById('errorMessage').textContent = 'エラー: ' + error.message;
+                document.getElementById('errorMessage').style.display = 'block';
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            loadData().finally(() => {
+                btn.disabled = false;
+            });
+        }
+
+        function populateProjectFilter() {
+            if (!rawData || !rawData.filters) return;
+            const select = document.getElementById('projectFilter');
+            select.innerHTML = '<option value="">全案件</option>';
+            (rawData.filters.projects || []).forEach(p => {
+                select.innerHTML += `<option value="${p}">${p}</option>`;
+            });
+        }
+
+        function getFilteredRecords() {
+            if (!rawData || !rawData.records) return [];
+            let records = rawData.records;
+            const projectFilter = document.getElementById('projectFilter').value;
+            if (projectFilter) {
+                records = records.filter(r => r.project === projectFilter);
+            }
+            return records;
+        }
+
+        function getMonthKey(dateStr) {
+            const d = new Date(dateStr);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        }
+
+        function getMonthLabel(monthKey) {
+            const [year, month] = monthKey.split('-');
+            return `${year}年${parseInt(month)}月`;
+        }
+
+        function aggregateByMonth(records) {
+            const monthMap = {};
+            records.forEach(r => {
+                const monthKey = getMonthKey(r.date);
+                if (!monthMap[monthKey]) {
+                    monthMap[monthKey] = { calls: 0, pr: 0, appo: 0, callTime: 0 };
+                }
+                monthMap[monthKey].calls += r.calls;
+                monthMap[monthKey].pr += r.pr;
+                monthMap[monthKey].appo += r.appo;
+                monthMap[monthKey].callTime += r.callTime;
+            });
+
+            // 率を計算
+            Object.keys(monthMap).forEach(key => {
+                const m = monthMap[key];
+                m.callToPR = m.calls > 0 ? Math.round(m.pr / m.calls * 10000) / 100 : 0;
+                m.prToAppo = m.pr > 0 ? Math.round(m.appo / m.pr * 10000) / 100 : 0;
+                m.callToAppo = m.calls > 0 ? Math.round(m.appo / m.calls * 10000) / 100 : 0;
+                m.callsPerHour = m.callTime > 0 ? Math.round(m.calls / m.callTime * 10) / 10 : 0;
+            });
+
+            return monthMap;
+        }
+
+        function aggregateByMemberMonth(records) {
+            const memberMonthMap = {};
+            records.forEach(r => {
+                const monthKey = getMonthKey(r.date);
+                if (!memberMonthMap[r.name]) {
+                    memberMonthMap[r.name] = {};
+                }
+                if (!memberMonthMap[r.name][monthKey]) {
+                    memberMonthMap[r.name][monthKey] = { calls: 0, pr: 0, appo: 0, callTime: 0 };
+                }
+                memberMonthMap[r.name][monthKey].calls += r.calls;
+                memberMonthMap[r.name][monthKey].pr += r.pr;
+                memberMonthMap[r.name][monthKey].appo += r.appo;
+                memberMonthMap[r.name][monthKey].callTime += r.callTime;
+            });
+
+            // 率を計算
+            Object.keys(memberMonthMap).forEach(name => {
+                Object.keys(memberMonthMap[name]).forEach(monthKey => {
+                    const m = memberMonthMap[name][monthKey];
+                    m.callToPR = m.calls > 0 ? Math.round(m.pr / m.calls * 10000) / 100 : 0;
+                    m.prToAppo = m.pr > 0 ? Math.round(m.appo / m.pr * 10000) / 100 : 0;
+                    m.callToAppo = m.calls > 0 ? Math.round(m.appo / m.calls * 10000) / 100 : 0;
+                    m.callsPerHour = m.callTime > 0 ? Math.round(m.calls / m.callTime * 10) / 10 : 0;
+                });
+            });
+
+            return memberMonthMap;
+        }
+
+        function renderTables() {
+            renderMonthlyTable();
+            renderMemberMonthTable();
+        }
+
+        function renderMonthlyTable() {
+            const records = getFilteredRecords();
+            const monthData = aggregateByMonth(records);
+            const months = Object.keys(monthData).sort();
+            const metric = currentMonthlyMetric;
+            const config = metricConfig[metric];
+
+            const thead = document.querySelector('#monthlyTable thead');
+            const tbody = document.querySelector('#monthlyTable tbody');
+
+            // ヘッダー
+            thead.innerHTML = `
+                <tr>
+                    <th>指標</th>
+                    ${months.map(m => `<th>${getMonthLabel(m)}</th>`).join('')}
+                    <th>合計/平均</th>
+                    <th>前月比</th>
+                </tr>
+            `;
+
+            // データ行
+            const values = months.map(m => monthData[m][metric]);
+            let total, lastChange;
+
+            if (config.format === 'percent' || metric === 'callsPerHour') {
+                // 率系は平均
+                const validValues = values.filter(v => v > 0);
+                total = validValues.length > 0 ? validValues.reduce((a, b) => a + b, 0) / validValues.length : 0;
+            } else {
+                // 実数系は合計
+                total = values.reduce((a, b) => a + b, 0);
+            }
+
+            // 前月比
+            if (months.length >= 2) {
+                const lastMonth = monthData[months[months.length - 1]][metric];
+                const prevMonth = monthData[months[months.length - 2]][metric];
+                if (prevMonth > 0) {
+                    lastChange = ((lastMonth - prevMonth) / prevMonth * 100).toFixed(1);
+                }
+            }
+
+            tbody.innerHTML = `
+                <tr>
+                    <td>${config.label}</td>
+                    ${values.map(v => `<td>${formatValue(v, config.format)}</td>`).join('')}
+                    <td><strong>${formatValue(total, config.format)}</strong></td>
+                    <td class="${lastChange > 0 ? 'change-positive' : lastChange < 0 ? 'change-negative' : ''}">${lastChange ? (lastChange > 0 ? '+' : '') + lastChange + '%' : '-'}</td>
+                </tr>
+            `;
+        }
+
+        function renderMemberMonthTable() {
+            const records = getFilteredRecords();
+            const memberMonthData = aggregateByMemberMonth(records);
+            const members = Object.keys(memberMonthData).sort();
+            const months = [...new Set(records.map(r => getMonthKey(r.date)))].sort();
+            const metric = currentMemberMetric;
+            const config = metricConfig[metric];
+
+            const thead = document.querySelector('#memberMonthTable thead');
+            const tbody = document.querySelector('#memberMonthTable tbody');
+
+            // ヘッダー
+            thead.innerHTML = `
+                <tr>
+                    <th>担当者</th>
+                    ${months.map(m => `<th>${getMonthLabel(m)}</th>`).join('')}
+                    <th>合計/平均</th>
+                </tr>
+            `;
+
+            // データ行
+            let totalByMonth = {};
+            months.forEach(m => {
+                totalByMonth[m] = { calls: 0, pr: 0, appo: 0, callTime: 0 };
+            });
+
+            let rows = members.map(name => {
+                const values = months.map(m => {
+                    const data = memberMonthData[name][m];
+                    if (data) {
+                        totalByMonth[m].calls += data.calls;
+                        totalByMonth[m].pr += data.pr;
+                        totalByMonth[m].appo += data.appo;
+                        totalByMonth[m].callTime += data.callTime;
+                    }
+                    return data ? data[metric] : 0;
+                });
+
+                let total;
+                if (config.format === 'percent' || metric === 'callsPerHour') {
+                    const validValues = values.filter(v => v > 0);
+                    total = validValues.length > 0 ? validValues.reduce((a, b) => a + b, 0) / validValues.length : 0;
+                } else {
+                    total = values.reduce((a, b) => a + b, 0);
+                }
+
+                return {
+                    name,
+                    values,
+                    total
+                };
+            });
+
+            // 合計の率を計算
+            months.forEach(m => {
+                const t = totalByMonth[m];
+                t.callToPR = t.calls > 0 ? Math.round(t.pr / t.calls * 10000) / 100 : 0;
+                t.prToAppo = t.pr > 0 ? Math.round(t.appo / t.pr * 10000) / 100 : 0;
+                t.callToAppo = t.calls > 0 ? Math.round(t.appo / t.calls * 10000) / 100 : 0;
+                t.callsPerHour = t.callTime > 0 ? Math.round(t.calls / t.callTime * 10) / 10 : 0;
+            });
+
+            // 合計行
+            const totalValues = months.map(m => totalByMonth[m][metric]);
+            let grandTotal;
+            if (config.format === 'percent' || metric === 'callsPerHour') {
+                const validValues = totalValues.filter(v => v > 0);
+                grandTotal = validValues.length > 0 ? validValues.reduce((a, b) => a + b, 0) / validValues.length : 0;
+            } else {
+                grandTotal = totalValues.reduce((a, b) => a + b, 0);
+            }
+
+            // 合計でソート（降順）
+            rows.sort((a, b) => b.total - a.total);
+
+            tbody.innerHTML = rows.map(row => `
+                <tr>
+                    <td>${row.name}</td>
+                    ${row.values.map(v => `<td>${formatValue(v, config.format)}</td>`).join('')}
+                    <td><strong>${formatValue(row.total, config.format)}</strong></td>
+                </tr>
+            `).join('') + `
+                <tr class="total-row">
+                    <td>合計</td>
+                    ${totalValues.map(v => `<td>${formatValue(v, config.format)}</td>`).join('')}
+                    <td><strong>${formatValue(grandTotal, config.format)}</strong></td>
+                </tr>
+            `;
+        }
+
+        function initMetricSelectors() {
+            // 月別推移表
+            document.querySelectorAll('#monthlyMetricSelector .metric-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('#monthlyMetricSelector .metric-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentMonthlyMetric = this.dataset.metric;
+                    renderMonthlyTable();
+                });
+            });
+
+            // 担当者×月別表
+            document.querySelectorAll('#memberMetricSelector .metric-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('#memberMetricSelector .metric-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentMemberMetric = this.dataset.metric;
+                    renderMemberMonthTable();
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initMetricSelectors();
+            loadData();
+        });
+    </script>
+</body>
+</html>

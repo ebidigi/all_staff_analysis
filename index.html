@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全社員 営業分析ダッシュボード | DigiMan</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* メインカラー */
+            --primary-blue: #1155cc;
+            --primary-cyan: #00a2da;
+            --primary-yellow: #e8d335;
+            --primary-red: #e04f24;
+
+            /* ブルー系グラデーション */
+            --blue-50: #e7eefb;
+            --blue-100: #c2d6f9;
+            --blue-200: #86aaec;
+            --blue-300: #437ce1;
+            --blue-400: #1155cc;
+            --blue-500: #0c3d93;
+            --blue-600: #082558;
+
+            /* シアン系グラデーション */
+            --cyan-50: #eff8fa;
+            --cyan-100: #a1d7ea;
+            --cyan-200: #6dc6e5;
+            --cyan-300: #00a2da;
+            --cyan-400: #0083b0;
+
+            /* イエロー系グラデーション */
+            --yellow-50: #fbf8e2;
+            --yellow-100: #f4edb6;
+            --yellow-200: #ede07d;
+            --yellow-300: #e8d335;
+            --yellow-400: #dbc522;
+
+            /* レッド系グラデーション */
+            --red-50: #ffeae4;
+            --red-100: #fecec0;
+            --red-200: #ef947a;
+            --red-300: #ec724e;
+            --red-400: #e04f24;
+
+            /* グレー系 */
+            --gray-50: #fafaff;
+            --gray-100: #f9f9fc;
+            --gray-200: #e4e8ef;
+            --gray-300: #d0d4dc;
+            --gray-400: #b1b4ba;
+            --gray-500: #787b7f;
+            --gray-600: #434547;
+
+            /* セマンティックカラー */
+            --dark-navy: #082558;
+            --logo-gray: #787b7f;
+            --text-dark: #434547;
+            --text-light: #787b7f;
+            --text-muted: #688dce;
+            --bg-white: #FFFFFF;
+            --bg-light: #f9f9fc;
+            --border-color: #e4e8ef;
+
+            /* ステータスカラー */
+            --success: #86aaec;
+            --success-light: #c2d6f9;
+            --warning: #ede07d;
+            --warning-light: #f4edb6;
+            --danger: #ef947a;
+            --danger-light: #fecec0;
+        }
+
+        body {
+            font-family: 'Noto Sans JP', 'Poppins', sans-serif;
+            background: var(--bg-light);
+            min-height: 100vh;
+            color: var(--text-dark);
+            padding: 0;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* ヘッダー */
+        .top-header {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo svg {
+            width: 40px;
+            height: 40px;
+        }
+
+        .logo-text {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--primary-blue);
+        }
+
+        .page-title-text {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-left: 20px;
+            padding-left: 20px;
+            border-left: 1px solid var(--border-color);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .last-updated {
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        .refresh-btn {
+            background: var(--primary-blue);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .refresh-btn:hover {
+            background: #1548B8;
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: var(--bg-white);
+            border: 1px solid var(--primary-blue);
+            color: var(--primary-blue);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .nav-btn svg {
+            flex-shrink: 0;
+        }
+
+        /* メインコンテンツ */
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        /* ローディング */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--primary-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        /* セクションタイトル */
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 18px;
+            background: var(--primary-blue);
+            border-radius: 2px;
+        }
+
+        /* フィルターセクション */
+        .analysis-filter-section {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+        }
+
+        .filter-group-label {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            font-weight: 500;
+            margin-bottom: 10px;
+            margin-top: 16px;
+        }
+
+        .filter-group-label:first-child {
+            margin-top: 0;
+        }
+
+        .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .filter-btn {
+            padding: 6px 14px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            color: var(--text-light);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+        }
+
+        .filter-btn.active {
+            background: var(--primary-blue);
+            border-color: var(--primary-blue);
+            color: white;
+        }
+
+        .selected-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+            min-height: 36px;
+            align-items: center;
+        }
+
+        .selected-tags.empty {
+            display: none;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--primary-blue);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .tag.project {
+            background: var(--primary-blue);
+        }
+
+        .tag.member {
+            background: var(--primary-cyan);
+        }
+
+        .tag-remove {
+            cursor: pointer;
+            font-size: 1rem;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .tag-remove:hover {
+            opacity: 1;
+        }
+
+        .clear-all-btn {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid var(--gray-300);
+            color: var(--text-light);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .clear-all-btn:hover {
+            background: var(--gray-100);
+            border-color: var(--gray-400);
+        }
+
+        .filter-date-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .filter-date-row label {
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+
+        .filter-date-row input[type="date"] {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--text-dark);
+        }
+
+        .filter-date-row span {
+            color: var(--text-light);
+        }
+
+        /* KPIセクション */
+        .analysis-kpi-section {
+            margin-bottom: 30px;
+        }
+
+        .analysis-kpi-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+        }
+
+        .analysis-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .analysis-kpi-card {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .kpi-name {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 8px;
+        }
+
+        .kpi-main-value {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .kpi-comparison {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .comparison-item {
+            font-size: 0.75rem;
+            margin-bottom: 4px;
+        }
+
+        .comparison-label {
+            color: var(--text-light);
+        }
+
+        .comparison-value {
+            font-weight: 600;
+        }
+
+        .comparison-value.positive {
+            color: var(--primary-blue);
+        }
+
+        .comparison-value.negative {
+            color: var(--primary-red);
+        }
+
+        .comparison-value.neutral {
+            color: var(--text-light);
+        }
+
+        /* グラフセクション */
+        .analysis-chart-section {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-type-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .chart-type-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            color: var(--text-light);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .chart-type-btn:hover {
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+        }
+
+        .chart-type-btn.active {
+            background: var(--primary-blue);
+            border-color: var(--primary-blue);
+            color: white;
+        }
+
+        .chart-compare-toggle {
+            margin-bottom: 20px;
+        }
+
+        .compare-toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .compare-toggle-label input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+
+        .compare-toggle-text {
+            font-size: 0.85rem;
+            color: var(--text-dark);
+        }
+
+        .chart-container {
+            height: 400px;
+            position: relative;
+        }
+
+        /* エラーメッセージ */
+        .error-message {
+            background: var(--red-50);
+            border: 1px solid var(--red-200);
+            color: var(--red-400);
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        /* フッター */
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-light);
+            font-size: 0.8rem;
+        }
+
+        /* レスポンシブ */
+        @media (max-width: 1200px) {
+            .analysis-kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .top-header {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px;
+            }
+
+            .dashboard {
+                padding: 15px;
+            }
+
+            .analysis-kpi-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-type-selector {
+                overflow-x: auto;
+                flex-wrap: nowrap;
+                padding-bottom: 10px;
+            }
+
+            .filter-date-row {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">データを読み込んでいます...</div>
+    </div>
+
+    <div class="top-header">
+        <div class="logo">
+            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="40" height="40" rx="8" fill="#1155cc"/>
+                <path d="M12 14h6v12h-6zM22 10h6v16h-6z" fill="white"/>
+            </svg>
+            <span class="logo-text">DigiMan</span>
+            <span class="page-title-text">全社員 営業分析ダッシュボード</span>
+        </div>
+        <div class="header-right">
+            <a href="file:///Users/ebineryota/all_staff_comparison.html" class="nav-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                過去比較表
+            </a>
+            <div class="last-updated" id="lastUpdated"></div>
+            <button class="refresh-btn" id="refreshBtn" onclick="refreshData()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                </svg>
+                更新
+            </button>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <div class="error-message" id="errorMessage"></div>
+
+        <!-- フィルターセクション -->
+        <div class="analysis-filter-section" id="analysisFilterSection">
+            <div class="filter-group-label">案件で絞り込み</div>
+            <div class="filter-row" id="analysisProjectFilterRow"></div>
+
+            <div class="filter-group-label">担当者で絞り込み</div>
+            <div class="filter-row" id="analysisMemberFilterRow"></div>
+
+            <div class="selected-tags empty" id="analysisSelectedTags"></div>
+
+            <div class="filter-date-row">
+                <label>期間:</label>
+                <input type="date" id="analysisStartDate">
+                <span>〜</span>
+                <input type="date" id="analysisEndDate">
+                <button class="filter-btn" onclick="applyAnalysisFilters()">適用</button>
+            </div>
+        </div>
+
+        <!-- 実数指標 -->
+        <div class="analysis-kpi-section">
+            <div class="analysis-kpi-title">実数指標</div>
+            <div class="analysis-kpi-grid" id="analysisNumberKPIs"></div>
+        </div>
+
+        <!-- 率指標 -->
+        <div class="analysis-kpi-section">
+            <div class="analysis-kpi-title">率指標</div>
+            <div class="analysis-kpi-grid" id="analysisRateKPIs"></div>
+        </div>
+
+        <!-- 日次推移グラフ -->
+        <div class="analysis-chart-section">
+            <div class="section-title">日次推移グラフ</div>
+            <div class="chart-type-selector">
+                <button class="chart-type-btn active" data-chart="calls">架電数</button>
+                <button class="chart-type-btn" data-chart="pr">PR数</button>
+                <button class="chart-type-btn" data-chart="appo">アポ数</button>
+                <button class="chart-type-btn" data-chart="callTime">稼働時間</button>
+                <button class="chart-type-btn" data-chart="callToPR">架電toPR率</button>
+                <button class="chart-type-btn" data-chart="prToAppo">PRtoアポ率</button>
+                <button class="chart-type-btn" data-chart="callToAppo">架電toアポ率</button>
+                <button class="chart-type-btn" data-chart="callsPerHour">架電数/H</button>
+            </div>
+            <div class="chart-compare-toggle">
+                <label class="compare-toggle-label">
+                    <input type="checkbox" id="compareMonthToggle" onchange="toggleMonthCompare()">
+                    <span class="compare-toggle-text">前月と比較</span>
+                </label>
+            </div>
+            <div class="chart-container">
+                <canvas id="analysisDailyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 担当者別比較グラフ -->
+        <div class="analysis-chart-section" style="margin-top: 30px;">
+            <div class="section-title">担当者別比較グラフ</div>
+            <div class="chart-type-selector" id="memberChartTypeSelector">
+                <button class="chart-type-btn active" data-chart="calls">架電数</button>
+                <button class="chart-type-btn" data-chart="pr">PR数</button>
+                <button class="chart-type-btn" data-chart="appo">アポ数</button>
+                <button class="chart-type-btn" data-chart="callTime">稼働時間</button>
+                <button class="chart-type-btn" data-chart="callToPR">架電toPR率</button>
+                <button class="chart-type-btn" data-chart="prToAppo">PRtoアポ率</button>
+                <button class="chart-type-btn" data-chart="callToAppo">架電toアポ率</button>
+                <button class="chart-type-btn" data-chart="callsPerHour">架電数/H</button>
+            </div>
+            <div class="chart-container" style="height: 500px;">
+                <canvas id="memberCompareChart"></canvas>
+            </div>
+        </div>
+
+        <div class="footer">
+            &copy; DigiMan Inc.
+        </div>
+    </div>
+
+    <script>
+        // グローバル変数
+        let analysisData = null;
+        let analysisSelectedProjects = [];
+        let analysisSelectedMembers = [];
+        let analysisChart = null;
+        let memberCompareChart = null;
+        let currentChartType = 'calls';
+        let currentMemberChartType = 'calls';
+        let compareMonthEnabled = false;
+
+        // 案件-担当者マッピング
+        let projectMemberMap = {};
+        let memberProjectMap = {};
+
+        // 除外する担当者
+        const EXCLUDED_MEMBERS = ['山田　香苗'];
+
+        const colors = {
+            primary: '#1155cc',
+            primaryCyan: '#00a2da',
+            darkNavy: '#082558',
+            success: '#86aaec',
+            warning: '#ede07d',
+            danger: '#ef947a',
+            call: '#1155cc',
+            appo: '#00a2da'
+        };
+
+        // API URL（全社員用のsourceパラメータを追加）
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwG_1cvgfnnNuK9PuhmXJOSeBuS8kFzJbf-R1p0qvySu0BW8GYKJKCKzHJ4Ny11FtkV/exec';
+
+        // キャッシュ設定
+        const ANALYSIS_CACHE_KEY = 'allStaffAnalysisDataCache';
+        const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5分
+
+        // ユーティリティ関数
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        function getCacheKey(startDate, endDate) {
+            return `${startDate || 'null'}_${endDate || 'null'}`;
+        }
+
+        function getAnalysisCache(cacheKey) {
+            try {
+                const cacheStr = localStorage.getItem(ANALYSIS_CACHE_KEY);
+                if (!cacheStr) return null;
+                const cache = JSON.parse(cacheStr);
+                if (cache.key === cacheKey && Date.now() - cache.timestamp < CACHE_EXPIRY_MS) {
+                    return cache.data;
+                }
+            } catch (e) {
+                console.error('Cache read error:', e);
+            }
+            return null;
+        }
+
+        function setAnalysisCache(cacheKey, data) {
+            try {
+                const cache = {
+                    key: cacheKey,
+                    timestamp: Date.now(),
+                    data: data
+                };
+                localStorage.setItem(ANALYSIS_CACHE_KEY, JSON.stringify(cache));
+            } catch (e) {
+                console.error('Cache write error:', e);
+            }
+        }
+
+        // データ読み込み
+        async function loadAnalysisData(forceRefresh = false) {
+            const startDate = document.getElementById('analysisStartDate').value;
+            const endDate = document.getElementById('analysisEndDate').value;
+            const cacheKey = getCacheKey(startDate, endDate);
+
+            // キャッシュがあれば即座に表示
+            const cachedData = getAnalysisCache(cacheKey);
+            if (cachedData && !forceRefresh) {
+                analysisData = cachedData;
+                renderAnalysisPage();
+                hideLoading();
+                console.log('Analysis data loaded from cache');
+                // バックグラウンドで最新データを取得
+                fetchAnalysisDataInBackground(startDate, endDate, cacheKey);
+                return;
+            }
+
+            // 全社員用APIを呼び出し
+            let apiUrl = `${API_URL}?type=rawdata&source=all_staff`;
+            if (startDate) apiUrl += `&startDate=${startDate}`;
+            if (endDate) apiUrl += `&endDate=${endDate}`;
+
+            showLoading();
+            try {
+                const response = await fetch(apiUrl);
+                analysisData = await response.json();
+                console.log('Analysis data loaded from API:', analysisData);
+                console.log('previousMonthDaily:', analysisData.previousMonthDaily);
+                if (analysisData.error) throw new Error(analysisData.error);
+                setAnalysisCache(cacheKey, analysisData);
+                renderAnalysisPage();
+                document.getElementById('lastUpdated').textContent = `最終更新: ${new Date().toLocaleString('ja-JP')}`;
+            } catch (error) {
+                console.error('Analysis data load error:', error);
+                document.getElementById('errorMessage').textContent = 'エラー: ' + error.message;
+                document.getElementById('errorMessage').style.display = 'block';
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function fetchAnalysisDataInBackground(startDate, endDate, cacheKey) {
+            let apiUrl = `${API_URL}?type=rawdata&source=all_staff`;
+            if (startDate) apiUrl += `&startDate=${startDate}`;
+            if (endDate) apiUrl += `&endDate=${endDate}`;
+
+            try {
+                const response = await fetch(apiUrl);
+                const newData = await response.json();
+                if (!newData.error) {
+                    analysisData = newData;
+                    setAnalysisCache(cacheKey, newData);
+                    renderAnalysisPage();
+                    document.getElementById('lastUpdated').textContent = `最終更新: ${new Date().toLocaleString('ja-JP')}`;
+                    console.log('Analysis data updated from background fetch');
+                }
+            } catch (error) {
+                console.error('Background fetch error:', error);
+            }
+        }
+
+        function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            loadAnalysisData(true).finally(() => {
+                btn.disabled = false;
+            });
+        }
+
+        // レンダリング
+        function renderAnalysisPage() {
+            if (!analysisData) return;
+
+            buildMappings();
+            renderAnalysisFilters();
+            renderAnalysisKPIs();
+            renderAnalysisChart();
+            renderMemberCompareChart();
+            initChartTypeSelector();
+            initMemberChartTypeSelector();
+        }
+
+        function buildMappings() {
+            if (!analysisData || !analysisData.records) return;
+
+            projectMemberMap = {};
+            memberProjectMap = {};
+
+            analysisData.records.forEach(r => {
+                // 除外メンバーはスキップ
+                if (EXCLUDED_MEMBERS.includes(r.name)) return;
+
+                // 案件→担当者
+                if (!projectMemberMap[r.project]) {
+                    projectMemberMap[r.project] = new Set();
+                }
+                projectMemberMap[r.project].add(r.name);
+
+                // 担当者→案件
+                if (!memberProjectMap[r.name]) {
+                    memberProjectMap[r.name] = new Set();
+                }
+                memberProjectMap[r.name].add(r.project);
+            });
+        }
+
+        function renderAnalysisFilters() {
+            if (!analysisData || !analysisData.filters) {
+                console.error('No filters data available');
+                return;
+            }
+
+            const projects = analysisData.filters.projects || [];
+            // 除外メンバーをフィルターリストから除外
+            const members = (analysisData.filters.members || []).filter(m => !EXCLUDED_MEMBERS.includes(m));
+
+            // 双方向連動フィルター
+            let availableProjects = new Set(projects);
+            let availableMembers = new Set(members);
+
+            // 担当者が選択されている場合
+            if (analysisSelectedMembers.length > 0) {
+                availableProjects = new Set();
+                analysisSelectedMembers.forEach(m => {
+                    if (memberProjectMap[m]) {
+                        memberProjectMap[m].forEach(p => availableProjects.add(p));
+                    }
+                });
+            }
+
+            // 案件が選択されている場合
+            if (analysisSelectedProjects.length > 0) {
+                availableMembers = new Set();
+                analysisSelectedProjects.forEach(p => {
+                    if (projectMemberMap[p]) {
+                        projectMemberMap[p].forEach(name => availableMembers.add(name));
+                    }
+                });
+            }
+
+            const availableProjectList = [...availableProjects].sort();
+            // 除外メンバーを最終リストからも除外
+            const availableMemberList = [...availableMembers].filter(m => !EXCLUDED_MEMBERS.includes(m)).sort();
+
+            // フィルタリング
+            analysisSelectedProjects = analysisSelectedProjects.filter(p => availableProjects.has(p));
+            analysisSelectedMembers = analysisSelectedMembers.filter(m => availableMembers.has(m));
+
+            const hasSelection = analysisSelectedProjects.length > 0 || analysisSelectedMembers.length > 0;
+
+            document.getElementById('analysisProjectFilterRow').innerHTML = availableProjectList.map(p => `
+                <button class="filter-btn ${analysisSelectedProjects.includes(p) ? 'active' : ''}"
+                        onclick="toggleAnalysisFilter('project', '${p}')">${p}</button>
+            `).join('');
+
+            document.getElementById('analysisMemberFilterRow').innerHTML = availableMemberList.map(m => `
+                <button class="filter-btn ${analysisSelectedMembers.includes(m) ? 'active' : ''}"
+                        onclick="toggleAnalysisFilter('member', '${m}')">${m}</button>
+            `).join('');
+
+            const tagsContainer = document.getElementById('analysisSelectedTags');
+            tagsContainer.className = hasSelection ? 'selected-tags' : 'selected-tags empty';
+            tagsContainer.innerHTML = `
+                ${analysisSelectedProjects.map(p => `
+                    <span class="tag project">
+                        ${p}
+                        <span class="tag-remove" onclick="removeAnalysisTag('project', '${p}')">&times;</span>
+                    </span>
+                `).join('')}
+                ${analysisSelectedMembers.map(m => `
+                    <span class="tag member">
+                        ${m}
+                        <span class="tag-remove" onclick="removeAnalysisTag('member', '${m}')">&times;</span>
+                    </span>
+                `).join('')}
+                ${hasSelection ? '<button class="clear-all-btn" onclick="clearAnalysisFilters()">クリア</button>' : ''}
+            `;
+        }
+
+        function toggleAnalysisFilter(type, value) {
+            if (type === 'project') {
+                if (analysisSelectedProjects.includes(value)) {
+                    analysisSelectedProjects = analysisSelectedProjects.filter(p => p !== value);
+                } else {
+                    analysisSelectedProjects.push(value);
+                }
+            } else {
+                if (analysisSelectedMembers.includes(value)) {
+                    analysisSelectedMembers = analysisSelectedMembers.filter(m => m !== value);
+                } else {
+                    analysisSelectedMembers.push(value);
+                }
+            }
+            renderAnalysisFilters();
+            renderAnalysisKPIs();
+            renderAnalysisChart();
+            renderMemberCompareChart();
+        }
+
+        function removeAnalysisTag(type, value) {
+            if (type === 'project') {
+                analysisSelectedProjects = analysisSelectedProjects.filter(p => p !== value);
+            } else {
+                analysisSelectedMembers = analysisSelectedMembers.filter(m => m !== value);
+            }
+            renderAnalysisFilters();
+            renderAnalysisKPIs();
+            renderAnalysisChart();
+            renderMemberCompareChart();
+        }
+
+        function clearAnalysisFilters() {
+            analysisSelectedProjects = [];
+            analysisSelectedMembers = [];
+            renderAnalysisFilters();
+            renderAnalysisKPIs();
+            renderAnalysisChart();
+            renderMemberCompareChart();
+        }
+
+        function applyAnalysisFilters() {
+            loadAnalysisData(true);
+        }
+
+        function getFilteredAnalysisData() {
+            if (!analysisData || !analysisData.records) return { records: [], aggregated: null };
+
+            let filtered = analysisData.records;
+
+            // 除外メンバーをフィルタリング
+            filtered = filtered.filter(r => !EXCLUDED_MEMBERS.includes(r.name));
+
+            if (analysisSelectedProjects.length > 0) {
+                filtered = filtered.filter(r => analysisSelectedProjects.includes(r.project));
+            }
+            if (analysisSelectedMembers.length > 0) {
+                filtered = filtered.filter(r => analysisSelectedMembers.includes(r.name));
+            }
+
+            const aggregated = aggregateFilteredData(filtered);
+
+            return { records: filtered, aggregated: aggregated };
+        }
+
+        function aggregateFilteredData(records) {
+            let totalCalls = 0, totalPR = 0, totalAppo = 0, totalCallTime = 0;
+            const dailyMap = {};
+
+            records.forEach(r => {
+                totalCalls += r.calls;
+                totalPR += r.pr;
+                totalAppo += r.appo;
+                totalCallTime += r.callTime;
+
+                if (r.date) {
+                    if (!dailyMap[r.date]) {
+                        dailyMap[r.date] = { calls: 0, pr: 0, appo: 0, callTime: 0 };
+                    }
+                    dailyMap[r.date].calls += r.calls;
+                    dailyMap[r.date].pr += r.pr;
+                    dailyMap[r.date].appo += r.appo;
+                    dailyMap[r.date].callTime += r.callTime;
+                }
+            });
+
+            return {
+                totals: {
+                    calls: totalCalls,
+                    pr: totalPR,
+                    appo: totalAppo,
+                    callTime: totalCallTime,
+                    callToPR: totalCalls > 0 ? Math.round(totalPR / totalCalls * 10000) / 100 : 0,
+                    prToAppo: totalPR > 0 ? Math.round(totalAppo / totalPR * 10000) / 100 : 0,
+                    callToAppo: totalCalls > 0 ? Math.round(totalAppo / totalCalls * 10000) / 100 : 0,
+                    callsPerHour: totalCallTime > 0 ? Math.round(totalCalls / totalCallTime * 10) / 10 : 0
+                },
+                daily: Object.keys(dailyMap).sort().map(date => ({
+                    date: date,
+                    ...dailyMap[date],
+                    callToPR: dailyMap[date].calls > 0 ? Math.round(dailyMap[date].pr / dailyMap[date].calls * 10000) / 100 : 0,
+                    prToAppo: dailyMap[date].pr > 0 ? Math.round(dailyMap[date].appo / dailyMap[date].pr * 10000) / 100 : 0,
+                    callToAppo: dailyMap[date].calls > 0 ? Math.round(dailyMap[date].appo / dailyMap[date].calls * 10000) / 100 : 0,
+                    callsPerHour: dailyMap[date].callTime > 0 ? Math.round(dailyMap[date].calls / dailyMap[date].callTime * 10) / 10 : 0
+                }))
+            };
+        }
+
+        function renderAnalysisKPIs() {
+            const { aggregated } = getFilteredAnalysisData();
+            if (!aggregated) return;
+
+            const totals = aggregated.totals;
+            const comparisons = analysisData.comparisons || { lastMonth: {}, allTime: {} };
+
+            // 実数指標
+            document.getElementById('analysisNumberKPIs').innerHTML = `
+                <div class="analysis-kpi-card">
+                    <div class="kpi-name">架電数</div>
+                    <div class="kpi-main-value">${totals.calls.toLocaleString()}</div>
+                </div>
+                <div class="analysis-kpi-card">
+                    <div class="kpi-name">PR数</div>
+                    <div class="kpi-main-value">${totals.pr.toLocaleString()}</div>
+                </div>
+                <div class="analysis-kpi-card">
+                    <div class="kpi-name">アポ数</div>
+                    <div class="kpi-main-value">${totals.appo.toLocaleString()}</div>
+                </div>
+                <div class="analysis-kpi-card">
+                    <div class="kpi-name">稼働時間</div>
+                    <div class="kpi-main-value">${totals.callTime.toLocaleString()}H</div>
+                </div>
+                <div class="analysis-kpi-card">
+                    <div class="kpi-name">架電数/H</div>
+                    <div class="kpi-main-value">${totals.callsPerHour}</div>
+                </div>
+            `;
+
+            // 率指標
+            document.getElementById('analysisRateKPIs').innerHTML = `
+                <div class="analysis-kpi-card">
+                    <div class="kpi-name">架電toPR率</div>
+                    <div class="kpi-main-value">${totals.callToPR}%</div>
+                    <div class="kpi-comparison">
+                        <div class="comparison-item">
+                            <span class="comparison-label">先月比: </span>
+                            <span class="comparison-value ${getComparisonClass(comparisons.lastMonth.callToPR)}">${formatComparison(comparisons.lastMonth.callToPR)}</span>
+                        </div>
+                        <div class="comparison-item">
+                            <span class="comparison-label">通算比: </span>
+                            <span class="comparison-value ${getComparisonClass(comparisons.allTime.callToPR)}">${formatComparison(comparisons.allTime.callToPR)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="analysis-kpi-card">
+                    <div class="kpi-name">PRtoアポ率</div>
+                    <div class="kpi-main-value">${totals.prToAppo}%</div>
+                    <div class="kpi-comparison">
+                        <div class="comparison-item">
+                            <span class="comparison-label">先月比: </span>
+                            <span class="comparison-value ${getComparisonClass(comparisons.lastMonth.prToAppo)}">${formatComparison(comparisons.lastMonth.prToAppo)}</span>
+                        </div>
+                        <div class="comparison-item">
+                            <span class="comparison-label">通算比: </span>
+                            <span class="comparison-value ${getComparisonClass(comparisons.allTime.prToAppo)}">${formatComparison(comparisons.allTime.prToAppo)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="analysis-kpi-card">
+                    <div class="kpi-name">架電toアポ率</div>
+                    <div class="kpi-main-value">${totals.callToAppo}%</div>
+                    <div class="kpi-comparison">
+                        <div class="comparison-item">
+                            <span class="comparison-label">先月比: </span>
+                            <span class="comparison-value ${getComparisonClass(comparisons.lastMonth.callToAppo)}">${formatComparison(comparisons.lastMonth.callToAppo)}</span>
+                        </div>
+                        <div class="comparison-item">
+                            <span class="comparison-label">通算比: </span>
+                            <span class="comparison-value ${getComparisonClass(comparisons.allTime.callToAppo)}">${formatComparison(comparisons.allTime.callToAppo)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getComparisonClass(value) {
+            if (!value || value === 0) return 'neutral';
+            return value > 0 ? 'positive' : 'negative';
+        }
+
+        function formatComparison(value) {
+            if (!value || value === 0) return '±0.0%';
+            const prefix = value > 0 ? '+' : '';
+            return `${prefix}${value.toFixed(1)}%`;
+        }
+
+        function initChartTypeSelector() {
+            document.querySelectorAll('.chart-type-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentChartType = this.dataset.chart;
+                    renderAnalysisChart();
+                });
+            });
+        }
+
+        function toggleMonthCompare() {
+            compareMonthEnabled = document.getElementById('compareMonthToggle').checked;
+
+            // 前月比較時は率系のみ表示
+            const absoluteCharts = ['calls', 'pr', 'appo'];
+            document.querySelectorAll('.chart-type-btn').forEach(btn => {
+                const chartType = btn.dataset.chart;
+                if (absoluteCharts.includes(chartType)) {
+                    btn.style.display = compareMonthEnabled ? 'none' : '';
+                }
+            });
+
+            // 現在選択中が非表示になった場合、架電toPR率に切り替え
+            if (compareMonthEnabled && absoluteCharts.includes(currentChartType)) {
+                currentChartType = 'callToPR';
+                document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector('.chart-type-btn[data-chart="callToPR"]').classList.add('active');
+            }
+
+            renderAnalysisChart();
+        }
+
+        function renderAnalysisChart() {
+            const { aggregated } = getFilteredAnalysisData();
+            if (!aggregated || !aggregated.daily || aggregated.daily.length === 0) {
+                if (analysisChart) {
+                    analysisChart.destroy();
+                    analysisChart = null;
+                }
+                return;
+            }
+
+            const daily = aggregated.daily;
+
+            // 比較モードの場合は日付を日番号(1-31)に変換
+            let labels;
+            if (compareMonthEnabled) {
+                labels = daily.map(d => {
+                    const day = new Date(d.date).getDate();
+                    return day + '日';
+                });
+            } else {
+                labels = daily.map(d => d.date);
+            }
+
+            const chartConfig = {
+                calls: { label: '架電数', color: colors.call, field: 'calls' },
+                pr: { label: 'PR数', color: colors.primaryCyan, field: 'pr' },
+                appo: { label: 'アポ数', color: colors.success, field: 'appo' },
+                callTime: { label: '稼働時間 (H)', color: '#9b59b6', field: 'callTime' },
+                callToPR: { label: '架電toPR率 (%)', color: colors.warning, field: 'callToPR' },
+                prToAppo: { label: 'PRtoアポ率 (%)', color: '#00a2da', field: 'prToAppo' },
+                callToAppo: { label: '架電toアポ率 (%)', color: '#e04f24', field: 'callToAppo' },
+                callsPerHour: { label: '架電数/H', color: colors.danger, field: 'callsPerHour' }
+            };
+
+            const config = chartConfig[currentChartType] || chartConfig.calls;
+            const data = daily.map(d => d[config.field]);
+
+            // 前月平均値の計算（比較モード時）
+            let prevMonthAvg = null;
+            if (compareMonthEnabled && analysisData && analysisData.previousMonthDaily) {
+                const prevDaily = analysisData.previousMonthDaily.daily;
+                const validValues = prevDaily.filter(d => d[config.field] > 0).map(d => d[config.field]);
+                if (validValues.length > 0) {
+                    prevMonthAvg = validValues.reduce((sum, v) => sum + v, 0) / validValues.length;
+                    prevMonthAvg = Math.round(prevMonthAvg * 100) / 100;
+                }
+            }
+
+            if (analysisChart) {
+                analysisChart.destroy();
+            }
+
+            const ctx = document.getElementById('analysisDailyChart').getContext('2d');
+            const datasets = [{
+                label: compareMonthEnabled ? '当月 ' + config.label : config.label,
+                data: data,
+                borderColor: config.color,
+                backgroundColor: config.color + '20',
+                fill: !compareMonthEnabled,
+                tension: 0.3,
+                pointRadius: 4,
+                pointBackgroundColor: config.color
+            }];
+
+            // 比較モード時に前月平均を水平線で追加
+            if (compareMonthEnabled && prevMonthAvg !== null) {
+                datasets.push({
+                    label: '前月平均 ' + config.label + ' (' + prevMonthAvg + ')',
+                    data: Array(data.length).fill(prevMonthAvg),
+                    borderColor: '#e04f24',
+                    backgroundColor: 'transparent',
+                    fill: false,
+                    tension: 0,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                    borderDash: [8, 4]
+                });
+            }
+
+            analysisChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#787b7f',
+                                font: { family: "'Noto Sans JP', sans-serif" }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#e4e8ef' },
+                            ticks: { color: '#787b7f', font: { family: "'Poppins', sans-serif" } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#787b7f', font: { family: "'Poppins', sans-serif" } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 担当者別比較グラフのセレクター初期化
+        function initMemberChartTypeSelector() {
+            document.querySelectorAll('#memberChartTypeSelector .chart-type-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('#memberChartTypeSelector .chart-type-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentMemberChartType = this.dataset.chart;
+                    renderMemberCompareChart();
+                });
+            });
+        }
+
+        // 担当者別比較グラフの描画
+        function renderMemberCompareChart() {
+            const { aggregated } = getFilteredAnalysisData();
+            if (!aggregated) {
+                if (memberCompareChart) {
+                    memberCompareChart.destroy();
+                    memberCompareChart = null;
+                }
+                return;
+            }
+
+            // 担当者別データを取得
+            const memberData = getMemberAggregatedData();
+            if (!memberData || memberData.length === 0) {
+                if (memberCompareChart) {
+                    memberCompareChart.destroy();
+                    memberCompareChart = null;
+                }
+                return;
+            }
+
+            const chartConfig = {
+                calls: { label: '架電数', color: '#1155cc', field: 'calls' },
+                pr: { label: 'PR数', color: '#00a2da', field: 'pr' },
+                appo: { label: 'アポ数', color: '#86aaec', field: 'appo' },
+                callTime: { label: '稼働時間 (H)', color: '#9b59b6', field: 'callTime' },
+                callToPR: { label: '架電toPR率 (%)', color: '#ede07d', field: 'callToPR' },
+                prToAppo: { label: 'PRtoアポ率 (%)', color: '#00a2da', field: 'prToAppo' },
+                callToAppo: { label: '架電toアポ率 (%)', color: '#e04f24', field: 'callToAppo' },
+                callsPerHour: { label: '架電数/H', color: '#ef947a', field: 'callsPerHour' }
+            };
+
+            const config = chartConfig[currentMemberChartType] || chartConfig.calls;
+
+            // 選択された指標でソート（降順）
+            const sortedData = [...memberData].sort((a, b) => b[config.field] - a[config.field]);
+
+            const labels = sortedData.map(d => d.name);
+            const data = sortedData.map(d => d[config.field]);
+
+            // カラーパレット（担当者ごとに異なる色）
+            const colorPalette = [
+                '#1155cc', '#00a2da', '#e8d335', '#e04f24', '#86aaec',
+                '#6dc6e5', '#ede07d', '#ef947a', '#437ce1', '#0083b0',
+                '#dbc522', '#ec724e', '#c2d6f9', '#a1d7ea', '#f4edb6'
+            ];
+
+            const backgroundColors = data.map((_, i) => colorPalette[i % colorPalette.length] + '80');
+            const borderColors = data.map((_, i) => colorPalette[i % colorPalette.length]);
+
+            if (memberCompareChart) {
+                memberCompareChart.destroy();
+            }
+
+            const ctx = document.getElementById('memberCompareChart').getContext('2d');
+
+            memberCompareChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: config.label,
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    if (config.field.includes('To') || config.field === 'callsPerHour') {
+                                        return `${config.label}: ${value}`;
+                                    }
+                                    return `${config.label}: ${value.toLocaleString()}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: { color: '#e4e8ef' },
+                            ticks: {
+                                color: '#787b7f',
+                                font: { family: "'Poppins', sans-serif" }
+                            }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: {
+                                color: '#434547',
+                                font: { family: "'Noto Sans JP', sans-serif", size: 12 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 担当者別集計データを取得
+        function getMemberAggregatedData() {
+            if (!analysisData || !analysisData.records) return [];
+
+            let filtered = analysisData.records;
+
+            // 除外メンバーをフィルタリング
+            filtered = filtered.filter(r => !EXCLUDED_MEMBERS.includes(r.name));
+
+            // フィルター適用
+            if (analysisSelectedProjects.length > 0) {
+                filtered = filtered.filter(r => analysisSelectedProjects.includes(r.project));
+            }
+            if (analysisSelectedMembers.length > 0) {
+                filtered = filtered.filter(r => analysisSelectedMembers.includes(r.name));
+            }
+
+            // 担当者別に集計
+            const memberMap = {};
+            filtered.forEach(r => {
+                if (!memberMap[r.name]) {
+                    memberMap[r.name] = { name: r.name, calls: 0, pr: 0, appo: 0, callTime: 0 };
+                }
+                memberMap[r.name].calls += r.calls;
+                memberMap[r.name].pr += r.pr;
+                memberMap[r.name].appo += r.appo;
+                memberMap[r.name].callTime += r.callTime;
+            });
+
+            // 率を計算
+            return Object.values(memberMap).map(m => ({
+                ...m,
+                callToPR: m.calls > 0 ? Math.round(m.pr / m.calls * 10000) / 100 : 0,
+                prToAppo: m.pr > 0 ? Math.round(m.appo / m.pr * 10000) / 100 : 0,
+                callToAppo: m.calls > 0 ? Math.round(m.appo / m.calls * 10000) / 100 : 0,
+                callsPerHour: m.callTime > 0 ? Math.round(m.calls / m.callTime * 10) / 10 : 0
+            }));
+        }
+
+        // 日付をYYYY-MM-DD形式にフォーマット（ローカルタイム）
+        function formatDateLocal(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // 初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            // デフォルトの日付範囲を設定（月初〜今日）
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            document.getElementById('analysisStartDate').value = formatDateLocal(firstDay);
+            document.getElementById('analysisEndDate').value = formatDateLocal(now);
+
+            // データ読み込み
+            loadAnalysisData();
+        });
+    </script>
+</body>
+</html>

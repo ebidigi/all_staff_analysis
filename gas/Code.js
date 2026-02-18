@@ -1,0 +1,635 @@
+/**
+ * Google Apps Script - 営業KPIダッシュボードAPI
+ *
+ * 全社員分析シート対応版
+ * - source パラメータで稼働報酬チーム / 全社員を切り替え
+ */
+
+// スプレッドシートID
+const SPREADSHEET_ID = '1YjOXBP9cGnMmLpCCO-rRC2tVe25_LZbijaRldl2ZiSM';  // 稼働報酬チーム用
+const ALL_STAFF_SPREADSHEET_ID = '1Qo9LvDqUgkPVcaoDN-t4p8YKryoILKEMdMugDlpDTIQ';  // 全社員用
+
+// メイン関数: GETリクエストを処理
+function doGet(e) {
+  try {
+    const type = e && e.parameter && e.parameter.type ? e.parameter.type : 'monthly';
+    const source = e && e.parameter && e.parameter.source ? e.parameter.source : 'default';
+    let data;
+
+    switch (type) {
+      case 'monthly':
+        data = getMonthlyViewData();
+        break;
+      case 'rawdata':
+        data = getRawData(e.parameter, source);
+        break;
+      case 'settings':
+        data = getSettings();
+        break;
+      default:
+        data = getMonthlyViewData();
+    }
+
+    return ContentService
+      .createTextOutput(JSON.stringify(data))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ error: error.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// POSTリクエストを処理（設定保存用）
+function doPost(e) {
+  try {
+    const requestBody = JSON.parse(e.postData.contents);
+    const type = requestBody.type || 'settings';
+
+    if (type === 'settings') {
+      saveSettings(requestBody.data);
+      return ContentService
+        .createTextOutput(JSON.stringify({ success: true }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ error: 'Unknown type' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ error: error.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// スプレッドシートIDを取得（sourceに応じて切り替え）
+function getSpreadsheetId(source) {
+  if (source === 'all_staff') {
+    return ALL_STAFF_SPREADSHEET_ID;
+  }
+  return SPREADSHEET_ID;
+}
+
+// 月次ビューのデータを取得
+function getMonthlyViewData() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('月次ビュー');
+  const data = sheet.getDataRange().getValues();
+
+  // ヘッダー情報（2行目）を取得
+  const headerRow = data[1];
+  const standardProgress = parsePercentage(headerRow[3]);
+  const elapsedDays = extractNumber(headerRow[4]);
+  const totalDays = extractTotalDays(headerRow[4]);
+  const backTarget = parsePercentage(headerRow[15]);
+
+  // 担当者別のデータ（5行目から）
+  const members = [];
+
+  for (let i = 4; i < data.length; i++) {
+    const row = data[i];
+
+    // 空行または合計行をスキップ
+    if (!row[1] || row[1] === '' || row[1] === '計' || String(row[1]).includes('計（')) {
+      continue;
+    }
+
+    // 担当者名からメンション記号を除去
+    const rawName = row[1];
+    const name = String(rawName).replace(/@/g, '').split('/')[0].trim();
+
+    members.push({
+      name: name,
+      fullName: rawName,
+      project: row[2] || '',
+      callPace: parsePercentage(row[3]),
+      appointmentPace: parsePercentage(row[4]),
+      sales: parseCurrency(row[5]),
+      targetCalls: parseNumber(row[6]),
+      actualCalls: parseNumber(row[7]),
+      callProgress: parsePercentage(row[8]),
+      targetAppointments: parseNumber(row[9]),
+      actualAppointments: parseNumber(row[10]),
+      appointmentProgress: parsePercentage(row[11]),
+      actualPR: parseNumber(row[12]),
+      callsPerHourTarget: parseNumber(row[13]),
+      callsPerHourActual: parseNumber(row[14]),
+      callToAppointmentTarget: parsePercentage(row[15]),
+      callToAppointmentActual: parsePercentage(row[16]),
+      callToAnswer: parsePercentage(row[17]),
+      answerToAppointment: parsePercentage(row[18]),
+      workHoursTarget: parseNumber(row[19]),
+      workHoursActual: parseNumber(row[20])
+    });
+  }
+
+  // 合計データを取得
+  let totalSales = 0, totalCalls = 0, totalAppointments = 0, targetCalls = 0, targetAppointments = 0;
+  for (let i = 0; i < data.length; i++) {
+    if (data[i][1] === '計') {
+      totalSales = parseCurrency(data[i][5]);
+      targetCalls = parseNumber(data[i][6]);
+      totalCalls = parseNumber(data[i][7]);
+      targetAppointments = parseNumber(data[i][9]);
+      totalAppointments = parseNumber(data[i][10]);
+      break;
+    }
+  }
+
+  // 拡張合計
+  let extendedTotalSales = totalSales;
+  for (let i = 0; i < data.length; i++) {
+    if (data[i][1] && String(data[i][1]).includes('計（')) {
+      extendedTotalSales = parseCurrency(data[i][5]);
+      break;
+    }
+  }
+
+  return {
+    metadata: {
+      lastUpdated: new Date().toISOString(),
+      sheetName: '月次ビュー',
+      standardProgress: standardProgress,
+      elapsedDays: elapsedDays,
+      totalDays: totalDays,
+      backTarget: backTarget
+    },
+    summary: {
+      totalSales: totalSales,
+      extendedTotalSales: extendedTotalSales,
+      totalCalls: totalCalls,
+      targetCalls: targetCalls,
+      totalAppointments: totalAppointments,
+      targetAppointments: targetAppointments,
+      callProgressRate: targetCalls > 0 ? Math.round(totalCalls / targetCalls * 10000) / 100 : 0,
+      appointmentProgressRate: targetAppointments > 0 ? Math.round(totalAppointments / targetAppointments * 10000) / 100 : 0
+    },
+    members: members
+  };
+}
+
+// ユーティリティ関数
+function parsePercentage(value) {
+  if (!value) return 0;
+  if (typeof value === 'number') return Math.round(value * 10000) / 100;
+  const str = String(value).replace('%', '').trim();
+  return parseFloat(str) || 0;
+}
+
+function parseCurrency(value) {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  const str = String(value).replace(/[¥,]/g, '').trim();
+  return parseInt(str) || 0;
+}
+
+function parseNumber(value) {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  const str = String(value).replace(/,/g, '').trim();
+  return parseFloat(str) || 0;
+}
+
+function extractNumber(text) {
+  if (!text) return 0;
+  const match = String(text).match(/(\d+)/);
+  return match ? parseInt(match[1]) : 0;
+}
+
+function extractTotalDays(text) {
+  if (!text) return 0;
+  const match = String(text).match(/全(\d+)/);
+  return match ? parseInt(match[1]) : 0;
+}
+
+// テスト用関数
+function testGetData() {
+  const result = getMonthlyViewData();
+  Logger.log(JSON.stringify(result, null, 2));
+}
+
+// ========================================
+// 実績rawdataからの集計
+// ========================================
+
+function getRawData(params, source) {
+  const spreadsheetId = getSpreadsheetId(source || 'default');
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const sheet = ss.getSheetByName('実績rawdata');
+  const data = sheet.getDataRange().getValues();
+
+  // ヘッダーをスキップ（1行目）
+  const rows = data.slice(1);
+
+  // 日付フィルター
+  const startDate = params && params.startDate ? new Date(params.startDate) : null;
+  const endDate = params && params.endDate ? new Date(params.endDate) : null;
+
+  // データを処理
+  const records = [];
+  const projectSet = new Set();
+  const memberSet = new Set();
+
+  rows.forEach(row => {
+    if (!row[0]) return; // 空行スキップ
+
+    const rawName = String(row[0]).replace(/@/g, '').split('/')[0].trim();
+    const project = row[1] || '';
+    const dateValue = row[2];
+    const callTime = parseNumber(row[3]) || 0;
+    const calls = parseNumber(row[4]) || 0;
+    const pr = parseNumber(row[5]) || 0;
+    const appo = parseNumber(row[6]) || 0;
+
+    // 日付パース
+    let recordDate = null;
+    if (dateValue instanceof Date) {
+      recordDate = dateValue;
+    } else if (dateValue) {
+      recordDate = new Date(dateValue);
+    }
+
+    // 日付フィルタリング
+    if (startDate && recordDate && recordDate < startDate) return;
+    if (endDate && recordDate && recordDate > endDate) return;
+
+    projectSet.add(project);
+    memberSet.add(rawName);
+
+    records.push({
+      name: rawName,
+      project: project,
+      date: recordDate ? Utilities.formatDate(recordDate, 'Asia/Tokyo', 'yyyy-MM-dd') : null,
+      callTime: callTime,
+      calls: calls,
+      pr: pr,
+      appo: appo
+    });
+  });
+
+  // 集計データを計算
+  const aggregated = aggregateData(records);
+
+  // 先月比・通算比を計算
+  const allRecords = getAllRawRecords(source);
+  const comparisons = calculateComparisons(aggregated, allRecords, startDate, endDate);
+
+  // 前月の日別データを取得（月次比較用）
+  const previousMonthDaily = getPreviousMonthDaily(allRecords, startDate, endDate);
+
+  return {
+    records: records,
+    aggregated: aggregated,
+    comparisons: comparisons,
+    previousMonthDaily: previousMonthDaily,
+    filters: {
+      projects: Array.from(projectSet).sort(),
+      members: Array.from(memberSet).sort()
+    }
+  };
+}
+
+// 前月の日別データを取得
+function getPreviousMonthDaily(allRecords, startDate, endDate) {
+  // 当月の範囲を決定
+  let currentStart, currentEnd;
+
+  if (startDate && endDate) {
+    currentStart = new Date(startDate);
+    currentEnd = new Date(endDate);
+  } else {
+    // デフォルトは今月
+    const now = new Date();
+    currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    currentEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  }
+
+  // 前月の範囲を計算
+  const prevStart = new Date(currentStart.getFullYear(), currentStart.getMonth() - 1, 1);
+  const prevEnd = new Date(currentStart.getFullYear(), currentStart.getMonth(), 0);
+
+  // 前月のレコードをフィルタ
+  const prevRecords = allRecords.filter(r => {
+    if (!r.date) return false;
+    return r.date >= prevStart && r.date <= prevEnd;
+  });
+
+  // 日別集計
+  const dailyMap = {};
+  prevRecords.forEach(r => {
+    const day = r.date.getDate(); // 日のみ（1-31）
+    if (!dailyMap[day]) {
+      dailyMap[day] = { calls: 0, pr: 0, appo: 0, callTime: 0 };
+    }
+    dailyMap[day].calls += r.calls;
+    dailyMap[day].pr += r.pr;
+    dailyMap[day].appo += r.appo;
+    dailyMap[day].callTime += r.callTime;
+  });
+
+  // 1日〜31日の配列に変換
+  const result = [];
+  for (let day = 1; day <= 31; day++) {
+    const d = dailyMap[day] || { calls: 0, pr: 0, appo: 0, callTime: 0 };
+    result.push({
+      day: day,
+      calls: d.calls,
+      pr: d.pr,
+      appo: d.appo,
+      callTime: d.callTime,
+      callToPR: d.calls > 0 ? Math.round(d.pr / d.calls * 10000) / 100 : 0,
+      prToAppo: d.pr > 0 ? Math.round(d.appo / d.pr * 10000) / 100 : 0,
+      callToAppo: d.calls > 0 ? Math.round(d.appo / d.calls * 10000) / 100 : 0,
+      callsPerHour: d.callTime > 0 ? Math.round(d.calls / d.callTime * 10) / 10 : 0
+    });
+  }
+
+  return {
+    month: Utilities.formatDate(prevStart, 'Asia/Tokyo', 'yyyy-MM'),
+    daily: result
+  };
+}
+
+// 全rawdataレコードを取得（比較計算用）
+function getAllRawRecords(source) {
+  const spreadsheetId = getSpreadsheetId(source || 'default');
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const sheet = ss.getSheetByName('実績rawdata');
+  const data = sheet.getDataRange().getValues();
+  const rows = data.slice(1);
+
+  const records = [];
+  rows.forEach(row => {
+    if (!row[0]) return;
+
+    const rawName = String(row[0]).replace(/@/g, '').split('/')[0].trim();
+    const dateValue = row[2];
+    let recordDate = null;
+    if (dateValue instanceof Date) {
+      recordDate = dateValue;
+    } else if (dateValue) {
+      recordDate = new Date(dateValue);
+    }
+
+    records.push({
+      name: rawName,
+      project: row[1] || '',
+      date: recordDate,
+      callTime: parseNumber(row[3]) || 0,
+      calls: parseNumber(row[4]) || 0,
+      pr: parseNumber(row[5]) || 0,
+      appo: parseNumber(row[6]) || 0
+    });
+  });
+
+  return records;
+}
+
+// データを集計
+function aggregateData(records) {
+  let totalCalls = 0, totalPR = 0, totalAppo = 0, totalCallTime = 0;
+
+  // 日別集計
+  const dailyMap = {};
+  // 案件別集計
+  const projectMap = {};
+  // 担当者別集計
+  const memberMap = {};
+
+  records.forEach(r => {
+    totalCalls += r.calls;
+    totalPR += r.pr;
+    totalAppo += r.appo;
+    totalCallTime += r.callTime;
+
+    // 日別
+    if (r.date) {
+      if (!dailyMap[r.date]) {
+        dailyMap[r.date] = { calls: 0, pr: 0, appo: 0, callTime: 0 };
+      }
+      dailyMap[r.date].calls += r.calls;
+      dailyMap[r.date].pr += r.pr;
+      dailyMap[r.date].appo += r.appo;
+      dailyMap[r.date].callTime += r.callTime;
+    }
+
+    // 案件別
+    if (r.project) {
+      if (!projectMap[r.project]) {
+        projectMap[r.project] = { calls: 0, pr: 0, appo: 0, callTime: 0 };
+      }
+      projectMap[r.project].calls += r.calls;
+      projectMap[r.project].pr += r.pr;
+      projectMap[r.project].appo += r.appo;
+      projectMap[r.project].callTime += r.callTime;
+    }
+
+    // 担当者別
+    if (r.name) {
+      if (!memberMap[r.name]) {
+        memberMap[r.name] = { calls: 0, pr: 0, appo: 0, callTime: 0 };
+      }
+      memberMap[r.name].calls += r.calls;
+      memberMap[r.name].pr += r.pr;
+      memberMap[r.name].appo += r.appo;
+      memberMap[r.name].callTime += r.callTime;
+    }
+  });
+
+  // 率を計算
+  const callToPR = totalCalls > 0 ? Math.round(totalPR / totalCalls * 10000) / 100 : 0;
+  const prToAppo = totalPR > 0 ? Math.round(totalAppo / totalPR * 10000) / 100 : 0;
+  const callToAppo = totalCalls > 0 ? Math.round(totalAppo / totalCalls * 10000) / 100 : 0;
+  const callsPerHour = totalCallTime > 0 ? Math.round(totalCalls / totalCallTime * 10) / 10 : 0;
+
+  return {
+    totals: {
+      calls: totalCalls,
+      pr: totalPR,
+      appo: totalAppo,
+      callTime: totalCallTime,
+      callToPR: callToPR,
+      prToAppo: prToAppo,
+      callToAppo: callToAppo,
+      callsPerHour: callsPerHour
+    },
+    daily: Object.keys(dailyMap).sort().map(date => ({
+      date: date,
+      ...dailyMap[date],
+      callToPR: dailyMap[date].calls > 0 ? Math.round(dailyMap[date].pr / dailyMap[date].calls * 10000) / 100 : 0,
+      prToAppo: dailyMap[date].pr > 0 ? Math.round(dailyMap[date].appo / dailyMap[date].pr * 10000) / 100 : 0,
+      callToAppo: dailyMap[date].calls > 0 ? Math.round(dailyMap[date].appo / dailyMap[date].calls * 10000) / 100 : 0,
+      callsPerHour: dailyMap[date].callTime > 0 ? Math.round(dailyMap[date].calls / dailyMap[date].callTime * 10) / 10 : 0
+    })),
+    byProject: Object.keys(projectMap).map(project => ({
+      project: project,
+      ...projectMap[project],
+      callToPR: projectMap[project].calls > 0 ? Math.round(projectMap[project].pr / projectMap[project].calls * 10000) / 100 : 0,
+      prToAppo: projectMap[project].pr > 0 ? Math.round(projectMap[project].appo / projectMap[project].pr * 10000) / 100 : 0,
+      callToAppo: projectMap[project].calls > 0 ? Math.round(projectMap[project].appo / projectMap[project].calls * 10000) / 100 : 0,
+      callsPerHour: projectMap[project].callTime > 0 ? Math.round(projectMap[project].calls / projectMap[project].callTime * 10) / 10 : 0
+    })),
+    byMember: Object.keys(memberMap).map(name => ({
+      name: name,
+      ...memberMap[name],
+      callToPR: memberMap[name].calls > 0 ? Math.round(memberMap[name].pr / memberMap[name].calls * 10000) / 100 : 0,
+      prToAppo: memberMap[name].pr > 0 ? Math.round(memberMap[name].appo / memberMap[name].pr * 10000) / 100 : 0,
+      callToAppo: memberMap[name].calls > 0 ? Math.round(memberMap[name].appo / memberMap[name].calls * 10000) / 100 : 0,
+      callsPerHour: memberMap[name].callTime > 0 ? Math.round(memberMap[name].calls / memberMap[name].callTime * 10) / 10 : 0
+    }))
+  };
+}
+
+// 先月比・通算比を計算
+function calculateComparisons(currentAggregated, allRecords, startDate, endDate) {
+  // 選択期間の日数を計算
+  let periodDays = 0;
+  if (startDate && endDate) {
+    periodDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+  }
+
+  // 先月の同期間を計算
+  let lastMonthStart = null, lastMonthEnd = null;
+  if (startDate && endDate) {
+    lastMonthStart = new Date(startDate);
+    lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
+    lastMonthEnd = new Date(endDate);
+    lastMonthEnd.setMonth(lastMonthEnd.getMonth() - 1);
+  }
+
+  // 先月データをフィルタリング
+  const lastMonthRecords = allRecords.filter(r => {
+    if (!r.date || !lastMonthStart || !lastMonthEnd) return false;
+    return r.date >= lastMonthStart && r.date <= lastMonthEnd;
+  });
+
+  // 先月の集計
+  const lastMonthAgg = aggregateData(lastMonthRecords.map(r => ({
+    ...r,
+    date: r.date ? Utilities.formatDate(r.date, 'Asia/Tokyo', 'yyyy-MM-dd') : null
+  })));
+
+  // 全期間の集計
+  const allTimeAgg = aggregateData(allRecords.map(r => ({
+    ...r,
+    date: r.date ? Utilities.formatDate(r.date, 'Asia/Tokyo', 'yyyy-MM-dd') : null
+  })));
+
+  const current = currentAggregated.totals;
+  const lastMonth = lastMonthAgg.totals;
+  const allTime = allTimeAgg.totals;
+
+  return {
+    lastMonth: {
+      callToPR: roundDiff(current.callToPR - lastMonth.callToPR),
+      prToAppo: roundDiff(current.prToAppo - lastMonth.prToAppo),
+      callToAppo: roundDiff(current.callToAppo - lastMonth.callToAppo)
+    },
+    allTime: {
+      callToPR: roundDiff(current.callToPR - allTime.callToPR),
+      prToAppo: roundDiff(current.prToAppo - allTime.prToAppo),
+      callToAppo: roundDiff(current.callToAppo - allTime.callToAppo)
+    }
+  };
+}
+
+function roundDiff(value) {
+  return Math.round(value * 100) / 100;
+}
+
+// ========================================
+// 設定データの取得・保存
+// ========================================
+
+function getSettings() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName('設定');
+
+  // シートがなければ作成
+  if (!sheet) {
+    sheet = ss.insertSheet('設定');
+    // ヘッダーを追加
+    sheet.getRange('A1:E1').setValues([[
+      '案件名', '架電→PR率目標(%)', 'PR→アポ率目標(%)', '架電→アポ率目標(%)', '架電数/H目標'
+    ]]);
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const settings = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row[0]) continue;
+
+    settings.push({
+      project: row[0],
+      callToPRTarget: parseNumber(row[1]),
+      prToAppoTarget: parseNumber(row[2]),
+      callToAppoTarget: parseNumber(row[3]),
+      callsPerHourTarget: parseNumber(row[4])
+    });
+  }
+
+  // 案件一覧を取得
+  const monthlySheet = ss.getSheetByName('月次ビュー');
+  const monthlyData = monthlySheet.getDataRange().getValues();
+  const projectsSet = new Set();
+
+  for (let i = 4; i < monthlyData.length; i++) {
+    const project = monthlyData[i][2];
+    if (project && project !== '' && !String(project).includes('計')) {
+      projectsSet.add(project);
+    }
+  }
+
+  return {
+    settings: settings,
+    availableProjects: Array.from(projectsSet).sort()
+  };
+}
+
+function saveSettings(data) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sheet = ss.getSheetByName('設定');
+
+  if (!sheet) {
+    sheet = ss.insertSheet('設定');
+  }
+
+  // 既存データをクリア
+  sheet.clear();
+
+  // ヘッダーを追加
+  sheet.getRange('A1:E1').setValues([[
+    '案件名', '架電→PR率目標(%)', 'PR→アポ率目標(%)', '架電→アポ率目標(%)', '架電数/H目標'
+  ]]);
+
+  // データを書き込み
+  if (data && data.length > 0) {
+    const values = data.map(d => [
+      d.project,
+      d.callToPRTarget,
+      d.prToAppoTarget,
+      d.callToAppoTarget,
+      d.callsPerHourTarget
+    ]);
+    sheet.getRange(2, 1, values.length, 5).setValues(values);
+  }
+}
+
+// テスト用
+function testGetRawData() {
+  const result = getRawData({}, 'default');
+  Logger.log(JSON.stringify(result, null, 2));
+}
+
+function testGetAllStaffRawData() {
+  const result = getRawData({}, 'all_staff');
+  Logger.log(JSON.stringify(result, null, 2));
+}
+
+function testGetSettings() {
+  const result = getSettings();
+  Logger.log(JSON.stringify(result, null, 2));
+}
