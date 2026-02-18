@@ -170,6 +170,10 @@ file:///Users/ebineryota/all_staff_comparison.html    # 過去比較表
 - 高速なクエリ応答
 - 履歴データの保存が容易
 
+## GitHubリポジトリ
+
+**URL:** https://github.com/ebidigi/all_staff_analysis
+
 ## 関連プロジェクト
 
 - **稼働報酬チームダッシュボード**: `/Users/ebineryota/code/sales_dashboard_dynamic/`
