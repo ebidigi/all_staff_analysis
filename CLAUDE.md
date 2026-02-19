@@ -6,51 +6,39 @@
 
 ```
 all_staff_analysis/
-├── index.html          # 分析ダッシュボードUI
-├── comparison.html     # 過去比較表UI
+├── index.html          # 月内管理ダッシュボードUI
+├── comparison.html     # 過去比較ダッシュボードUI
 ├── gas/
-│   └── Code.js         # GAS API（参照用・既存GASを更新）
+│   ├── Code.js         # GAS API（参照用・既存GASを更新）
+│   └── Sync*.js        # Turso同期スクリプト
+├── turso/
+│   ├── .env            # Turso認証情報
+│   └── schema.sql      # DBスキーマ
 ├── deploy.sh           # UIデプロイスクリプト
 └── CLAUDE.md           # 本ファイル
 ```
 
 ## データソース
 
+### Turso データベース（メイン）
+
+実績データはTurso（SQLite）に保存され、HTTP APIで取得する。
+
+**パフォーマンスDB**:
+- URL: `https://all-staff-rawdata-ebidigi.aws-ap-northeast-1.turso.io`
+- テーブル: `performance_rawdata`
+- カラム: `member_name`, `project_name`, `input_date`, `call_hours`, `call_count`, `pr_count`, `appointment_count`, `data_source`
+
+**社員マスターDB**:
+- URL: `https://digiman-talent-ebidigi.aws-ap-northeast-1.turso.io`
+- テーブル: `employees`
+- カラム: `name`, `employee_type` (employee/contractor/intern), `department`, `position`, `hire_date`, `retire_date`
+
+### スプレッドシート（元データ）
+
 - **スプレッドシートID**: `1Qo9LvDqUgkPVcaoDN-t4p8YKryoILKEMdMugDlpDTIQ`
 - **対象シート**: 実績rawdata
-- **列構成**:
-  - A: 担当名
-  - B: 案件名
-  - C: 入力日
-  - D: 架電時間
-  - E: 架電数
-  - F: PR数
-  - G: アポ数
-
-## API仕様
-
-既存の稼働報酬チーム用GASを共有し、`source`パラメータで切り替える。
-
-### エンドポイント
-
-```
-GET https://script.google.com/macros/s/AKfycbwG_1cvgfnnNuK9PuhmXJOSeBuS8kFzJbf-R1p0qvySu0BW8GYKJKCKzHJ4Ny11FtkV/exec
-```
-
-### パラメータ
-
-| パラメータ | 説明 | 例 |
-|-----------|------|-----|
-| type | データ種別 | `rawdata` |
-| source | データソース | `all_staff`（全社員用） |
-| startDate | 開始日 | `2026-02-01` |
-| endDate | 終了日 | `2026-02-28` |
-
-### 使用例
-
-```
-?type=rawdata&source=all_staff&startDate=2026-02-01&endDate=2026-02-28
-```
+- GASトリガーでTursoに同期
 
 ## デプロイ方法
 
@@ -64,37 +52,58 @@ GET https://script.google.com/macros/s/AKfycbwG_1cvgfnnNuK9PuhmXJOSeBuS8kFzJbf-R
 - `index.html` → `/Users/ebineryota/all_staff_analysis.html`
 - `comparison.html` → `/Users/ebineryota/all_staff_comparison.html`
 
-### GAS変更時
-
-1. GASエディタを開く
-2. `gas/Code.js` の内容をコピー＆ペースト
-3. **デプロイ → デプロイを管理 → 鉛筆アイコン → バージョン「新バージョン」→ デプロイ**
-   - ※「新しいデプロイ」だとURLが変わるので注意
-
 ### ブラウザで確認
 
 ```
-file:///Users/ebineryota/all_staff_analysis.html      # 分析ダッシュボード
-file:///Users/ebineryota/all_staff_comparison.html    # 過去比較表
+file:///Users/ebineryota/all_staff_analysis.html      # 月内管理ダッシュボード
+file:///Users/ebineryota/all_staff_comparison.html    # 過去比較ダッシュボード
 ```
+
+## 社員種別
+
+担当者は以下の3種別に分類される：
+
+| 種別 | employee_type | 説明 |
+|------|---------------|------|
+| 社員 | `employee` | 正社員 |
+| インターン | `intern` | インターン生 |
+| 業務委託 | `contractor` | 業務委託メンバー |
+
+### 種別の管理
+
+社員マスターDBの`employees`テーブルで管理。新しいメンバーを追加する場合：
+
+```sql
+INSERT INTO employees (name, employee_type, created_at, updated_at)
+VALUES ('@名前/romanized name', 'contractor', datetime('now'), datetime('now'));
+```
+
+**注意**: `name`はperformance_rawdataの`member_name`と一致させる必要がある（部分マッチも対応）
 
 ## 除外設定
 
 以下の担当者はデータから自動的に除外される：
-- 山田　香苗
+- @山田　香苗
+- @須藤　明里/akari sudo
 
 除外対象を変更する場合は、`index.html` と `comparison.html` の `EXCLUDED_MEMBERS` 配列を編集する。
 
 ## 機能一覧
 
-### 分析ダッシュボード（index.html）
+### 月内管理ダッシュボード（index.html）
 
-#### フィルター機能
+#### サイドバーフィルター
 
+- **表示期間**: 開始日・終了日で絞り込み（デフォルト: 月初〜今日）
+- **種別フィルター**: 社員/インターン/業務委託で絞り込み
 - **案件フィルター**: 案件名で絞り込み
-- **担当者フィルター**: 担当者名で絞り込み
+- **担当者フィルター**: 担当者名で絞り込み（検索ボックス付き、種別順ソート）
 - **双方向連動**: 案件選択→担当者候補を絞り込み、担当者選択→案件候補を絞り込み
-- **期間フィルター**: 開始日・終了日で絞り込み（デフォルト: 月初〜今日）
+
+#### 前月同日比 進捗ペース
+
+- 今月（1日〜今日）と前月同期間の比較
+- 架電数/PR数/アポ数/稼働時間の増減率を表示
 
 #### 実数KPI
 
@@ -112,35 +121,29 @@ file:///Users/ebineryota/all_staff_comparison.html    # 過去比較表
 
 #### 日次推移グラフ
 
-- 架電数
-- PR数
-- アポ数
-- 稼働時間
-- 架電toPR率
-- PRtoアポ率
-- 架電toアポ率
-- 架電数/H
+- 架電数/PR数/アポ数/稼働時間
+- 架電toPR率/PRtoアポ率/架電toアポ率/架電数/H
 
 #### 担当者別比較グラフ
 
 - 横棒グラフで担当者間の比較を表示
 - 選択した指標で降順ソート
-- 架電数/PR数/アポ数/稼働時間/各率指標に対応
 
-#### 前月比較機能
+### 過去比較ダッシュボード（comparison.html）
 
-- 「前月と比較」チェックで有効化
-- 率指標のみ表示（架電数/PR数/アポ数は非表示）
-- 前月平均を水平線で表示
+#### サイドバーフィルター
 
-### 過去比較表（comparison.html）
+- **年度選択**: 決算年度（7月〜翌6月）
+- **表示期間**: 月単位で選択
+- **種別フィルター**: 社員/インターン/業務委託
+- **案件フィルター**: 案件名で絞り込み
+- **担当者フィルター**: 担当者名で絞り込み（検索ボックス付き）
 
 #### 月別推移表
 
-- 過去3/6/12ヶ月の月別データを表形式で表示
-- 案件フィルターで絞り込み可能
+- 選択期間の月別データを表形式で表示
 - 各指標ボタンで表示切り替え
-- 合計/平均と前月比を表示
+- 合計/期間平均と前月比を表示
 
 #### 担当者×月別表
 
@@ -148,27 +151,20 @@ file:///Users/ebineryota/all_staff_comparison.html    # 過去比較表
 - 合計でソート（降順）
 - 全担当者の合計行を表示
 
-## キャッシュ機能
+#### 月別チャート
 
-- ローカルストレージに5分間キャッシュ
-- キャッシュキー: `allStaffAnalysisDataCache`
-- キャッシュクリア: コンソールで `localStorage.removeItem('allStaffAnalysisDataCache'); location.reload();`
+- 月別推移を棒グラフで可視化
 
-## 将来の拡張計画
+## 名前マッチングロジック
 
-### データベース構築（Turso）
+performance_rawdataとemployeesテーブルの名前照合は以下の順で行う：
 
-パフォーマンスが問題になった場合、Turso（SQLite）でデータベースを構築することを検討。
+1. **完全一致**: `employeeMaster[name]`
+2. **前方一致**: performance名がtalent名で始まる
+3. **逆前方一致**: talent名がperformance名で始まる
+4. **正規化一致**: @とスペースを除去し、/以前の部分で比較
 
-**想定構成**:
-- Tursoでリアルタイムデータをキャッシュ
-- GASからTursoへの定期同期
-- フロントエンドはTurso HTTP APIを直接呼び出し
-
-**メリット**:
-- GASの実行時間制限を回避
-- 高速なクエリ応答
-- 履歴データの保存が容易
+マッチしない場合はデフォルトで`employee`（社員）として扱う。
 
 ## GitHubリポジトリ
 
@@ -182,6 +178,6 @@ file:///Users/ebineryota/all_staff_comparison.html    # 過去比較表
 
 ## 注意事項
 
-- GASの変更は稼働報酬チームのダッシュボードにも影響する
-- `source`パラメータなし（またはdefault）= 稼働報酬チーム用データ
-- `source=all_staff` = 全社員用データ
+- Turso認証トークンは`turso/.env`に保存（リポジトリにはコミットしない）
+- 新しいメンバーが追加された場合、社員マスターDBへの登録が必要
+- 名前の形式（@プレフィックス、/以降のローマ字など）はperformance_rawdataと合わせる
