@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全社員 過去比較表 | DigiMan</title>
+    <title>過去比較ダッシュボード | DigiMan</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -121,10 +122,78 @@
             cursor: not-allowed;
         }
 
+        /* サイドバーレイアウト */
+        .app-container {
+            display: flex;
+            min-height: calc(100vh - 70px);
+        }
+
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            background: var(--bg-white);
+            border-right: 1px solid var(--border-color);
+            padding: 20px;
+            transition: all 0.3s ease;
+            overflow-y: auto;
+            position: sticky;
+            top: 70px;
+            height: calc(100vh - 70px);
+        }
+
+        .sidebar.collapsed {
+            width: 0;
+            min-width: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-toggle {
+            position: fixed;
+            left: 280px;
+            top: 85px;
+            width: 24px;
+            height: 48px;
+            background: var(--primary-blue);
+            border: none;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            transition: left 0.3s ease;
+            color: white;
+        }
+
+        .sidebar-toggle:hover {
+            background: #1548B8;
+        }
+
+        .sidebar.collapsed + .main-content .sidebar-toggle,
+        .sidebar.collapsed ~ .sidebar-toggle {
+            left: 0;
+        }
+
+        .sidebar-toggle svg {
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.collapsed + .main-content .sidebar-toggle svg,
+        .sidebar.collapsed ~ .sidebar-toggle svg {
+            transform: rotate(180deg);
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+
         .dashboard {
             max-width: 1600px;
             margin: 0 auto;
-            padding: 30px;
         }
 
         .loading-overlay {
@@ -183,6 +252,72 @@
             border-radius: 2px;
         }
 
+        /* サイドバー内フィルター */
+        .sidebar-section {
+            margin-bottom: 24px;
+        }
+
+        .sidebar-section-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--text-dark);
+            background: var(--bg-white);
+        }
+
+        .month-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .month-btn {
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            color: var(--text-light);
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+            border-radius: 4px;
+            min-width: 32px;
+            text-align: center;
+        }
+
+        .month-btn:hover {
+            background: var(--gray-100);
+            color: var(--primary-blue);
+            border-color: var(--primary-blue);
+        }
+
+        .month-btn.active {
+            background: var(--primary-blue);
+            border-color: var(--primary-blue);
+            color: white;
+        }
+
+        .month-btn.in-range {
+            background: var(--blue-50);
+            color: var(--primary-blue);
+            border-color: var(--blue-100);
+        }
+
+        .month-btn.full-width {
+            width: 100%;
+            margin-top: 4px;
+        }
+
         .filter-section {
             background: var(--bg-white);
             border-radius: 12px;
@@ -210,7 +345,139 @@
             border-radius: 6px;
             font-size: 0.85rem;
             color: var(--text-dark);
-            min-width: 120px;
+            min-width: 180px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .filter-btn-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .filter-btn-row.scrollable {
+            max-height: 200px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .filter-btn-row.scrollable::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .filter-btn-row.scrollable::-webkit-scrollbar-track {
+            background: var(--gray-100);
+            border-radius: 2px;
+        }
+
+        .filter-btn-row.scrollable::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 2px;
+        }
+
+        .filter-search {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+        }
+
+        .filter-btn {
+            padding: 4px 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            color: var(--text-light);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+        }
+
+        .filter-btn.active {
+            background: var(--primary-blue);
+            border-color: var(--primary-blue);
+            color: white;
+        }
+
+        .filter-btn.type-employee { }
+        .filter-btn.type-contractor { }
+        .filter-btn.type-intern { }
+
+        .selected-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .selected-tags.empty {
+            display: none;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: white;
+        }
+
+        .tag.type {
+            background: #9b59b6;
+        }
+
+        .tag.member {
+            background: var(--primary-cyan);
+        }
+
+        .tag-remove {
+            cursor: pointer;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .tag-remove:hover {
+            opacity: 1;
+        }
+
+        .clear-all-btn {
+            padding: 4px 10px;
+            background: transparent;
+            border: 1px solid var(--gray-300);
+            color: var(--text-light);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .clear-all-btn:hover {
+            background: var(--gray-100);
         }
 
         .table-section {
@@ -352,6 +619,24 @@
             font-size: 0.8rem;
         }
 
+        @media (max-width: 1024px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 70px;
+                z-index: 90;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            }
+
+            .sidebar.collapsed {
+                left: -280px;
+            }
+
+            .sidebar-toggle {
+                position: fixed;
+            }
+        }
+
         @media (max-width: 768px) {
             .top-header {
                 flex-direction: column;
@@ -359,8 +644,12 @@
                 padding: 15px;
             }
 
-            .dashboard {
+            .main-content {
                 padding: 15px;
+            }
+
+            .dashboard {
+                padding: 0;
             }
 
             .filter-row {
@@ -383,14 +672,14 @@
                 <path d="M12 14h6v12h-6zM22 10h6v16h-6z" fill="white"/>
             </svg>
             <span class="logo-text">DigiMan</span>
-            <span class="page-title-text">全社員 過去比較表</span>
+            <span class="page-title-text">過去比較ダッシュボード</span>
         </div>
         <div class="header-right">
             <a href="file:///Users/ebineryota/all_staff_analysis.html" class="nav-btn">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
-                分析ダッシュボード
+                月内管理
             </a>
             <div class="last-updated" id="lastUpdated"></div>
             <button class="refresh-btn" id="refreshBtn" onclick="refreshData()">
@@ -403,26 +692,67 @@
         </div>
     </div>
 
-    <div class="dashboard">
-        <div class="error-message" id="errorMessage"></div>
+    <div class="app-container">
+        <!-- サイドバー -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">表示年度</div>
+                <select id="fiscalYear" onchange="loadData()"></select>
+            </div>
 
-        <!-- フィルター -->
-        <div class="filter-section">
-            <div class="filter-row">
-                <label>表示期間:</label>
-                <select id="monthRange" onchange="loadData()">
-                    <option value="3">過去3ヶ月</option>
-                    <option value="6" selected>過去6ヶ月</option>
-                    <option value="12">過去12ヶ月</option>
-                </select>
-                <label>案件:</label>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">表示期間</div>
+                <div class="month-selector" id="monthSelector">
+                    <button class="month-btn" data-month="7">7</button>
+                    <button class="month-btn" data-month="8">8</button>
+                    <button class="month-btn" data-month="9">9</button>
+                    <button class="month-btn" data-month="10">10</button>
+                    <button class="month-btn" data-month="11">11</button>
+                    <button class="month-btn" data-month="12">12</button>
+                    <button class="month-btn" data-month="1">1</button>
+                    <button class="month-btn" data-month="2">2</button>
+                    <button class="month-btn" data-month="3">3</button>
+                    <button class="month-btn" data-month="4">4</button>
+                    <button class="month-btn" data-month="5">5</button>
+                    <button class="month-btn" data-month="6">6</button>
+                    <button class="month-btn full-width active" data-month="all">全期間</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">案件</div>
                 <select id="projectFilter" onchange="renderTables()">
                     <option value="">全案件</option>
                 </select>
             </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">種別</div>
+                <div class="filter-btn-row" id="employeeTypeFilterRow"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">担当者</div>
+                <input type="text" class="filter-search" id="memberSearchInput" placeholder="名前で検索..." oninput="filterMemberButtons()">
+                <div class="filter-btn-row scrollable" id="memberFilterRow"></div>
+            </div>
+
+            <div class="selected-tags empty" id="selectedTags"></div>
         </div>
 
-        <!-- 月別推移表 -->
+        <!-- サイドバートグルボタン -->
+        <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 18l-6-6 6-6"/>
+            </svg>
+        </button>
+
+        <!-- メインコンテンツ -->
+        <div class="main-content">
+            <div class="dashboard">
+                <div class="error-message" id="errorMessage"></div>
+
+                <!-- 月別推移表 -->
         <div class="table-section">
             <div class="section-title">月別推移表</div>
             <div class="metric-selector" id="monthlyMetricSelector">
@@ -439,6 +769,9 @@
                 <thead></thead>
                 <tbody></tbody>
             </table>
+            <div class="chart-container" style="margin-top: 24px; height: 300px;">
+                <canvas id="monthlyChart"></canvas>
+            </div>
         </div>
 
         <!-- 担当者×月別表 -->
@@ -460,21 +793,351 @@
             </table>
         </div>
 
-        <div class="footer">
-            &copy; DigiMan Inc.
+                <div class="footer">
+                    &copy; DigiMan Inc.
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
+        // サイドバー開閉
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.getElementById('sidebarToggle');
+            sidebar.classList.toggle('collapsed');
+
+            // 状態を保存
+            localStorage.setItem('comparisonSidebarCollapsed', sidebar.classList.contains('collapsed'));
+
+            // トグルボタンの位置を更新
+            if (sidebar.classList.contains('collapsed')) {
+                toggle.style.left = '0';
+            } else {
+                toggle.style.left = '280px';
+            }
+        }
+
+        // サイドバーの初期状態を復元
+        function initSidebar() {
+            const collapsed = localStorage.getItem('comparisonSidebarCollapsed') === 'true';
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.getElementById('sidebarToggle');
+
+            if (collapsed) {
+                sidebar.classList.add('collapsed');
+                toggle.style.left = '0';
+            }
+        }
+
         // グローバル変数
         let rawData = null;
         let currentMonthlyMetric = 'calls';
         let currentMemberMetric = 'calls';
+        let selectedStartMonth = null;  // 範囲選択の開始月
+        let selectedEndMonth = null;    // 範囲選択の終了月
+        let isSelectingRange = false;   // 範囲選択モード
+        let monthlyChart = null;        // 月別推移グラフ
 
         // 除外する担当者
-        const EXCLUDED_MEMBERS = ['山田　香苗'];
+        const EXCLUDED_MEMBERS = ['@山田　香苗', '@須藤　明里/akari sudo'];
 
-        const API_URL = 'https://script.google.com/macros/s/AKfycbwG_1cvgfnnNuK9PuhmXJOSeBuS8kFzJbf-R1p0qvySu0BW8GYKJKCKzHJ4Ny11FtkV/exec';
+        // 種別・担当者フィルター
+        let selectedEmployeeTypes = [];
+        let selectedMembers = [];
+        let employeeMaster = {};
+
+        const EMPLOYEE_TYPE_LABELS = {
+            'employee': '社員',
+            'contractor': '業務委託',
+            'intern': 'インターン'
+        };
+
+        // Turso Database Configuration (Talent/Employee Master)
+        const TURSO_CONFIG_TALENT = {
+            url: 'https://digiman-talent-ebidigi.aws-ap-northeast-1.turso.io',
+            authToken: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NzE0Njk4NDAsImlkIjoiODQ1ODVmNTUtZmIzZS00ZGNlLWExNWItOTIxMmRkNWRkMGM5IiwicmlkIjoiOWM2M2U4NmItZjk5Ny00YmFjLWIxMzctOTc3YWQwYzQ0NWZkIn0.3zDDfpaWtnje4hUS-mhte6USz4aU_Wl4CyKh3DlWHCh4-slVTFiDlCICb975mN4bdyHjxuVNgchLW0VBXhEsBg'
+        };
+
+        // 年度の月順序（7月始まり）
+        const FISCAL_MONTH_ORDER = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
+
+        // 現在の年度を取得（6月末決算）
+        function getCurrentFiscalYear() {
+            const now = new Date();
+            const month = now.getMonth() + 1;
+            const year = now.getFullYear();
+            // 7月以降なら当年度、6月以前なら前年度
+            return month >= 7 ? year : year - 1;
+        }
+
+        // 年度の開始日・終了日を取得
+        function getFiscalYearDates(fiscalYear) {
+            return {
+                start: `${fiscalYear}-07-01`,
+                end: `${fiscalYear + 1}-06-30`
+            };
+        }
+
+        // 特定の月の開始日・終了日を取得（年度内）
+        function getMonthDates(fiscalYear, month) {
+            let year;
+            if (month >= 7) {
+                year = fiscalYear;
+            } else {
+                year = fiscalYear + 1;
+            }
+            const startDate = new Date(year, month - 1, 1);
+            const endDate = new Date(year, month, 0);
+            return {
+                start: formatDateLocal(startDate),
+                end: formatDateLocal(endDate)
+            };
+        }
+
+        // 月範囲の開始日・終了日を取得
+        function getMonthRangeDates(fiscalYear, startMonth, endMonth) {
+            const startDates = getMonthDates(fiscalYear, startMonth);
+            const endDates = getMonthDates(fiscalYear, endMonth);
+            return {
+                start: startDates.start,
+                end: endDates.end
+            };
+        }
+
+        // 年度セレクタを初期化
+        function initFiscalYearSelector() {
+            const select = document.getElementById('fiscalYear');
+            const currentFY = getCurrentFiscalYear();
+
+            // データは2024年5月から存在するので2024年度から
+            const startFY = 2024;
+
+            select.innerHTML = '';
+            for (let fy = currentFY; fy >= startFY; fy--) {
+                const label = fy === currentFY ? `${fy}年度（当年度）` : `${fy}年度`;
+                select.innerHTML += `<option value="${fy}">${label}</option>`;
+            }
+        }
+
+        // 月ボタンのイベントを初期化
+        function initMonthSelector() {
+            document.querySelectorAll('#monthSelector .month-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const month = this.dataset.month;
+
+                    if (month === 'all') {
+                        // 全期間選択
+                        selectedStartMonth = null;
+                        selectedEndMonth = null;
+                        isSelectingRange = false;
+                        updateMonthButtonStyles();
+                        loadData();
+                    } else {
+                        const monthNum = parseInt(month);
+
+                        if (!isSelectingRange) {
+                            // 最初のクリック：開始月を設定
+                            selectedStartMonth = monthNum;
+                            selectedEndMonth = monthNum;
+                            isSelectingRange = true;
+                            updateMonthButtonStyles();
+                        } else {
+                            // 2回目のクリック：終了月を設定
+                            selectedEndMonth = monthNum;
+                            isSelectingRange = false;
+
+                            // 年度順で開始と終了を整理
+                            const startIdx = FISCAL_MONTH_ORDER.indexOf(selectedStartMonth);
+                            const endIdx = FISCAL_MONTH_ORDER.indexOf(selectedEndMonth);
+                            if (startIdx > endIdx) {
+                                [selectedStartMonth, selectedEndMonth] = [selectedEndMonth, selectedStartMonth];
+                            }
+
+                            updateMonthButtonStyles();
+                            loadData();
+                        }
+                    }
+                });
+            });
+        }
+
+        // 月ボタンのスタイルを更新
+        function updateMonthButtonStyles() {
+            const allBtn = document.querySelector('#monthSelector .month-btn[data-month="all"]');
+
+            document.querySelectorAll('#monthSelector .month-btn').forEach(btn => {
+                btn.classList.remove('active', 'in-range');
+            });
+
+            if (selectedStartMonth === null) {
+                // 全期間選択
+                allBtn.classList.add('active');
+            } else {
+                const startIdx = FISCAL_MONTH_ORDER.indexOf(selectedStartMonth);
+                const endIdx = FISCAL_MONTH_ORDER.indexOf(selectedEndMonth);
+
+                FISCAL_MONTH_ORDER.forEach((month, idx) => {
+                    const btn = document.querySelector(`#monthSelector .month-btn[data-month="${month}"]`);
+                    if (idx >= startIdx && idx <= endIdx) {
+                        if (idx === startIdx || idx === endIdx) {
+                            btn.classList.add('active');
+                        } else {
+                            btn.classList.add('in-range');
+                        }
+                    }
+                });
+            }
+        }
+
+        // Turso Database Configuration
+        const TURSO_CONFIG = {
+            url: 'https://all-staff-rawdata-ebidigi.aws-ap-northeast-1.turso.io',
+            authToken: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NzE0NjQ3MDQsImlkIjoiNGM0YTZjMjMtYWM4Zi00NmNlLThkMGQtNzJkMTk4YjMwMzkxIiwicmlkIjoiMGNlYTQzNzgtYzk2My00MjIzLWI4MmYtMTg1MzNkZDhjYWEzIn0.H-wdaWOE_bVajLf3yc_MkoaMuTr0-4zEeXONxQZmdXm_r3aVerE55gXsINoS4vdglt8G3gzFRSl7wSHRAL9vDQ'
+        };
+
+        // Turso HTTP API Query Function for Talent DB
+        async function queryTursoTalent(sql, args = []) {
+            const payload = {
+                statements: [
+                    { q: sql, params: args }
+                ]
+            };
+
+            const response = await fetch(TURSO_CONFIG_TALENT.url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${TURSO_CONFIG_TALENT.authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Turso Talent API error: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result[0] && result[0].error) {
+                throw new Error(result[0].error.message || result[0].error);
+            }
+
+            const queryResult = result[0];
+            if (!queryResult || !queryResult.results) {
+                return [];
+            }
+
+            const cols = queryResult.results.columns || [];
+            const rows = queryResult.results.rows || [];
+
+            return rows.map(row => {
+                const obj = {};
+                row.forEach((cell, i) => {
+                    obj[cols[i]] = cell;
+                });
+                return obj;
+            });
+        }
+
+        // 社員マスターデータを読み込み
+        async function loadEmployeeMaster() {
+            try {
+                const sql = `SELECT name, employee_type, department, position FROM employees WHERE retire_date IS NULL`;
+                const employees = await queryTursoTalent(sql);
+
+                employeeMaster = {};
+                employees.forEach(e => {
+                    employeeMaster[e.name] = {
+                        type: e.employee_type || 'employee',
+                        department: e.department,
+                        position: e.position
+                    };
+                });
+                console.log('Employee master loaded:', Object.keys(employeeMaster).length, 'employees');
+            } catch (error) {
+                console.error('Failed to load employee master:', error);
+            }
+        }
+
+        // 担当者の種別を取得（部分マッチ対応）
+        function getEmployeeType(name) {
+            // 完全一致
+            if (employeeMaster[name]) {
+                return employeeMaster[name].type;
+            }
+
+            // 部分マッチ: talentの名前がperformance名の先頭に含まれるか
+            for (const talentName of Object.keys(employeeMaster)) {
+                if (name.startsWith(talentName)) {
+                    return employeeMaster[talentName].type;
+                }
+            }
+
+            // 逆方向: performanceの名前がtalentの先頭部分と一致するか
+            for (const talentName of Object.keys(employeeMaster)) {
+                if (talentName.startsWith(name)) {
+                    return employeeMaster[talentName].type;
+                }
+            }
+
+            // スペースやスラッシュで区切った最初の部分で比較
+            const normalizedName = name.replace(/[@　\s]/g, '').split('/')[0];
+            for (const talentName of Object.keys(employeeMaster)) {
+                const normalizedTalent = talentName.replace(/[@　\s]/g, '').split('/')[0];
+                if (normalizedName === normalizedTalent || normalizedName.startsWith(normalizedTalent) || normalizedTalent.startsWith(normalizedName)) {
+                    return employeeMaster[talentName].type;
+                }
+            }
+
+            return 'employee';
+        }
+
+        // Turso HTTP API Query Function (v2 format)
+        async function queryTurso(sql, args = []) {
+            const payload = {
+                statements: [
+                    { q: sql, params: args }
+                ]
+            };
+
+            const response = await fetch(TURSO_CONFIG.url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${TURSO_CONFIG.authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Turso API error: ${response.status} - ${errorText}`);
+            }
+
+            const result = await response.json();
+
+            if (!result || !result[0] || !result[0].results) {
+                throw new Error('Unexpected Turso response format');
+            }
+
+            const queryResult = result[0];
+            if (queryResult.error) {
+                throw new Error(`Turso SQL error: ${queryResult.error}`);
+            }
+
+            // Transform to array of objects
+            const cols = queryResult.results.columns || [];
+            const rows = queryResult.results.rows || [];
+
+            return rows.map(row => {
+                const obj = {};
+                row.forEach((cell, i) => {
+                    obj[cols[i]] = cell;
+                });
+                return obj;
+            });
+        }
 
         const metricConfig = {
             calls: { label: '架電数', format: 'number' },
@@ -517,25 +1180,56 @@
         }
 
         async function loadData() {
-            const monthRange = parseInt(document.getElementById('monthRange').value);
-            const now = new Date();
-            const startDate = new Date(now.getFullYear(), now.getMonth() - monthRange + 1, 1);
-            const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            const fiscalYear = parseInt(document.getElementById('fiscalYear').value);
 
-            const apiUrl = `${API_URL}?type=rawdata&source=all_staff&startDate=${formatDateLocal(startDate)}&endDate=${formatDateLocal(endDate)}`;
+            let startDateStr, endDateStr;
+
+            if (selectedStartMonth === null) {
+                // 全期間：年度の7月1日〜6月30日
+                const fyDates = getFiscalYearDates(fiscalYear);
+                startDateStr = fyDates.start;
+                endDateStr = fyDates.end;
+            } else {
+                // 月範囲指定
+                const rangeDates = getMonthRangeDates(fiscalYear, selectedStartMonth, selectedEndMonth);
+                startDateStr = rangeDates.start;
+                endDateStr = rangeDates.end;
+            }
 
             showLoading();
             try {
-                const response = await fetch(apiUrl);
-                rawData = await response.json();
-                if (rawData.error) throw new Error(rawData.error);
+                // Query Turso for performance data
+                const sql = `
+                    SELECT
+                        member_name as name,
+                        project_name as project,
+                        input_date as date,
+                        COALESCE(call_count, 0) as calls,
+                        COALESCE(pr_count, 0) as pr,
+                        COALESCE(appointment_count, 0) as appo,
+                        COALESCE(call_hours, 0) as callTime
+                    FROM performance_rawdata
+                    WHERE input_date >= ? AND input_date <= ?
+                    ORDER BY input_date DESC
+                `;
+
+                const records = await queryTurso(sql, [startDateStr, endDateStr]);
 
                 // 除外メンバーをフィルタリング
-                if (rawData.records) {
-                    rawData.records = rawData.records.filter(r => !EXCLUDED_MEMBERS.includes(r.name));
-                }
+                const filteredRecords = records.filter(r => !EXCLUDED_MEMBERS.includes(r.name));
+
+                // Extract unique projects and members for filters
+                const projects = [...new Set(filteredRecords.map(r => r.project).filter(p => p))].sort();
+                const members = [...new Set(filteredRecords.map(r => r.name).filter(n => n))].sort();
+
+                rawData = {
+                    records: filteredRecords,
+                    filters: { projects, members }
+                };
 
                 populateProjectFilter();
+                renderEmployeeTypeFilter();
+                renderMemberFilter();
                 renderTables();
                 document.getElementById('lastUpdated').textContent = `最終更新: ${new Date().toLocaleString('ja-JP')}`;
             } catch (error) {
@@ -564,13 +1258,164 @@
             });
         }
 
+        // 種別フィルターを描画
+        function renderEmployeeTypeFilter() {
+            const types = ['employee', 'contractor', 'intern'];
+            document.getElementById('employeeTypeFilterRow').innerHTML = types.map(t => `
+                <button class="filter-btn ${selectedEmployeeTypes.includes(t) ? 'active' : ''}"
+                        onclick="toggleEmployeeTypeFilter('${t}')">${EMPLOYEE_TYPE_LABELS[t]}</button>
+            `).join('');
+        }
+
+        // 担当者フィルターを描画
+        function renderMemberFilter() {
+            if (!rawData || !rawData.filters) return;
+
+            let members = rawData.filters.members || [];
+
+            // 種別フィルターを適用した場合、その種別の担当者のみ表示
+            if (selectedEmployeeTypes.length > 0) {
+                members = members.filter(m => selectedEmployeeTypes.includes(getEmployeeType(m)));
+            }
+
+            // Store member list for search filtering
+            window.currentMemberList = members;
+            renderMemberFilterButtons();
+
+            renderSelectedTags();
+        }
+
+        // Sort members by employee type: 社員 → インターン → 業務委託
+        function sortMembersByType(members) {
+            const typeOrder = { 'employee': 0, 'intern': 1, 'contractor': 2 };
+            return [...members].sort((a, b) => {
+                const typeA = typeOrder[getEmployeeType(a)] ?? 3;
+                const typeB = typeOrder[getEmployeeType(b)] ?? 3;
+                if (typeA !== typeB) return typeA - typeB;
+                return a.localeCompare(b, 'ja');
+            });
+        }
+
+        // Render member filter buttons with search filtering
+        function renderMemberFilterButtons() {
+            const searchInput = document.getElementById('memberSearchInput');
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+            const memberList = window.currentMemberList || [];
+
+            let filteredMembers = searchTerm
+                ? memberList.filter(m => m.toLowerCase().includes(searchTerm))
+                : memberList;
+
+            // Sort by employee type
+            filteredMembers = sortMembersByType(filteredMembers);
+
+            document.getElementById('memberFilterRow').innerHTML = filteredMembers.map(m => `
+                <button class="filter-btn ${selectedMembers.includes(m) ? 'active' : ''}"
+                        onclick="toggleMemberFilter('${m.replace(/'/g, "\\'")}')"
+                        title="${m}">${m.replace(/@/g, '').split('/')[0]}</button>
+            `).join('');
+        }
+
+        // Filter member buttons on search input
+        function filterMemberButtons() {
+            renderMemberFilterButtons();
+        }
+
+        // 種別フィルターの切り替え
+        function toggleEmployeeTypeFilter(type) {
+            if (selectedEmployeeTypes.includes(type)) {
+                selectedEmployeeTypes = selectedEmployeeTypes.filter(t => t !== type);
+            } else {
+                selectedEmployeeTypes.push(type);
+            }
+            // 種別が変わったら担当者選択をリセット
+            selectedMembers = selectedMembers.filter(m => {
+                if (selectedEmployeeTypes.length === 0) return true;
+                return selectedEmployeeTypes.includes(getEmployeeType(m));
+            });
+            renderEmployeeTypeFilter();
+            renderMemberFilter();
+            renderTables();
+        }
+
+        // 担当者フィルターの切り替え
+        function toggleMemberFilter(member) {
+            if (selectedMembers.includes(member)) {
+                selectedMembers = selectedMembers.filter(m => m !== member);
+            } else {
+                selectedMembers.push(member);
+            }
+            renderMemberFilter();
+            renderTables();
+        }
+
+        // 選択タグを描画
+        function renderSelectedTags() {
+            const hasSelection = selectedEmployeeTypes.length > 0 || selectedMembers.length > 0;
+            const container = document.getElementById('selectedTags');
+            container.className = hasSelection ? 'selected-tags' : 'selected-tags empty';
+
+            container.innerHTML = `
+                ${selectedEmployeeTypes.map(t => `
+                    <span class="tag type">
+                        ${EMPLOYEE_TYPE_LABELS[t]}
+                        <span class="tag-remove" onclick="removeTypeTag('${t}')">&times;</span>
+                    </span>
+                `).join('')}
+                ${selectedMembers.map(m => `
+                    <span class="tag member">
+                        ${m}
+                        <span class="tag-remove" onclick="removeMemberTag('${m}')">&times;</span>
+                    </span>
+                `).join('')}
+                ${hasSelection ? '<button class="clear-all-btn" onclick="clearAllFilters()">クリア</button>' : ''}
+            `;
+        }
+
+        function removeTypeTag(type) {
+            selectedEmployeeTypes = selectedEmployeeTypes.filter(t => t !== type);
+            selectedMembers = selectedMembers.filter(m => {
+                if (selectedEmployeeTypes.length === 0) return true;
+                return selectedEmployeeTypes.includes(getEmployeeType(m));
+            });
+            renderEmployeeTypeFilter();
+            renderMemberFilter();
+            renderTables();
+        }
+
+        function removeMemberTag(member) {
+            selectedMembers = selectedMembers.filter(m => m !== member);
+            renderMemberFilter();
+            renderTables();
+        }
+
+        function clearAllFilters() {
+            selectedEmployeeTypes = [];
+            selectedMembers = [];
+            renderEmployeeTypeFilter();
+            renderMemberFilter();
+            renderTables();
+        }
+
         function getFilteredRecords() {
             if (!rawData || !rawData.records) return [];
             let records = rawData.records;
+
             const projectFilter = document.getElementById('projectFilter').value;
             if (projectFilter) {
                 records = records.filter(r => r.project === projectFilter);
             }
+
+            // 種別フィルター
+            if (selectedEmployeeTypes.length > 0) {
+                records = records.filter(r => selectedEmployeeTypes.includes(getEmployeeType(r.name)));
+            }
+
+            // 担当者フィルター
+            if (selectedMembers.length > 0) {
+                records = records.filter(r => selectedMembers.includes(r.name));
+            }
+
             return records;
         }
 
@@ -581,7 +1426,25 @@
 
         function getMonthLabel(monthKey) {
             const [year, month] = monthKey.split('-');
-            return `${year}年${parseInt(month)}月`;
+            return `${parseInt(month)}月`;
+        }
+
+        // 年度順で月をソート（7月始まり）
+        function sortMonthsByFiscalOrder(months) {
+            return months.sort((a, b) => {
+                const [yearA, monthA] = a.split('-').map(Number);
+                const [yearB, monthB] = b.split('-').map(Number);
+
+                // 年度内での月の順序を計算（7月=0, 8月=1, ..., 6月=11）
+                const orderA = monthA >= 7 ? monthA - 7 : monthA + 5;
+                const orderB = monthB >= 7 ? monthB - 7 : monthB + 5;
+
+                // まず年で比較、同年なら月の順序で比較
+                if (yearA !== yearB) {
+                    return yearA - yearB;
+                }
+                return orderA - orderB;
+            });
         }
 
         function aggregateByMonth(records) {
@@ -647,7 +1510,7 @@
         function renderMonthlyTable() {
             const records = getFilteredRecords();
             const monthData = aggregateByMonth(records);
-            const months = Object.keys(monthData).sort();
+            const months = sortMonthsByFiscalOrder(Object.keys(monthData));
             const metric = currentMonthlyMetric;
             const config = metricConfig[metric];
 
@@ -661,20 +1524,25 @@
                     ${months.map(m => `<th>${getMonthLabel(m)}</th>`).join('')}
                     <th>合計/平均</th>
                     <th>前月比</th>
+                    <th>全期間平均</th>
+                    <th>全期間平均比</th>
                 </tr>
             `;
 
             // データ行
             const values = months.map(m => monthData[m][metric]);
-            let total, lastChange;
+            let total, lastChange, periodAverage, avgChange;
 
             if (config.format === 'percent' || metric === 'callsPerHour') {
                 // 率系は平均
                 const validValues = values.filter(v => v > 0);
                 total = validValues.length > 0 ? validValues.reduce((a, b) => a + b, 0) / validValues.length : 0;
+                periodAverage = total; // 率系の場合は合計/平均と同じ
             } else {
                 // 実数系は合計
                 total = values.reduce((a, b) => a + b, 0);
+                // 全期間平均（月平均）
+                periodAverage = months.length > 0 ? total / months.length : 0;
             }
 
             // 前月比
@@ -686,21 +1554,113 @@
                 }
             }
 
+            // 全期間平均比（直近月と全期間平均の比較）
+            if (months.length >= 1 && periodAverage > 0) {
+                const lastMonth = monthData[months[months.length - 1]][metric];
+                avgChange = ((lastMonth - periodAverage) / periodAverage * 100).toFixed(1);
+            }
+
             tbody.innerHTML = `
                 <tr>
                     <td>${config.label}</td>
                     ${values.map(v => `<td>${formatValue(v, config.format)}</td>`).join('')}
                     <td><strong>${formatValue(total, config.format)}</strong></td>
                     <td class="${lastChange > 0 ? 'change-positive' : lastChange < 0 ? 'change-negative' : ''}">${lastChange ? (lastChange > 0 ? '+' : '') + lastChange + '%' : '-'}</td>
+                    <td><strong>${formatValue(periodAverage, config.format)}</strong></td>
+                    <td class="${avgChange > 0 ? 'change-positive' : avgChange < 0 ? 'change-negative' : ''}">${avgChange ? (avgChange > 0 ? '+' : '') + avgChange + '%' : '-'}</td>
                 </tr>
             `;
+
+            // グラフを描画
+            renderMonthlyChart(months, values, periodAverage, config);
+        }
+
+        function renderMonthlyChart(months, values, periodAverage, config) {
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+
+            // 既存のチャートを破棄
+            if (monthlyChart) {
+                monthlyChart.destroy();
+            }
+
+            const labels = months.map(m => getMonthLabel(m));
+
+            monthlyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: config.label,
+                            data: values,
+                            backgroundColor: 'rgba(17, 85, 204, 0.7)',
+                            borderColor: 'rgba(17, 85, 204, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            order: 2
+                        },
+                        {
+                            label: '全期間平均',
+                            data: Array(values.length).fill(periodAverage),
+                            type: 'line',
+                            borderColor: 'rgba(224, 79, 36, 1)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false,
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let value = context.raw;
+                                    if (config.format === 'percent') {
+                                        return context.dataset.label + ': ' + value.toFixed(2) + '%';
+                                    } else if (config.format === 'decimal') {
+                                        return context.dataset.label + ': ' + value.toFixed(1);
+                                    }
+                                    return context.dataset.label + ': ' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    if (config.format === 'percent') {
+                                        return value + '%';
+                                    } else if (config.format === 'decimal') {
+                                        return value.toFixed(1);
+                                    }
+                                    return value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         function renderMemberMonthTable() {
             const records = getFilteredRecords();
             const memberMonthData = aggregateByMemberMonth(records);
             const members = Object.keys(memberMonthData).sort();
-            const months = [...new Set(records.map(r => getMonthKey(r.date)))].sort();
+            const months = sortMonthsByFiscalOrder([...new Set(records.map(r => getMonthKey(r.date)))]);
             const metric = currentMemberMetric;
             const config = metricConfig[metric];
 
@@ -808,8 +1768,13 @@
             });
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            initSidebar();
+            initFiscalYearSelector();
+            initMonthSelector();
             initMetricSelectors();
+            // 社員マスターを先に読み込み
+            await loadEmployeeMaster();
             loadData();
         });
     </script>

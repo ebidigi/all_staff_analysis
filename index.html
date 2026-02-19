@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全社員 営業分析ダッシュボード | DigiMan</title>
+    <title>月内管理ダッシュボード | DigiMan</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -188,11 +188,113 @@
             flex-shrink: 0;
         }
 
-        /* メインコンテンツ */
+        /* サイドバーレイアウト */
+        .app-container {
+            display: flex;
+            min-height: calc(100vh - 70px);
+        }
+
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            background: var(--bg-white);
+            border-right: 1px solid var(--border-color);
+            padding: 20px;
+            transition: all 0.3s ease;
+            overflow-y: auto;
+            position: sticky;
+            top: 70px;
+            height: calc(100vh - 70px);
+        }
+
+        .sidebar.collapsed {
+            width: 0;
+            min-width: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-toggle {
+            position: fixed;
+            left: 280px;
+            top: 85px;
+            width: 24px;
+            height: 48px;
+            background: var(--primary-blue);
+            border: none;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            transition: left 0.3s ease;
+            color: white;
+        }
+
+        .sidebar-toggle:hover {
+            background: #1548B8;
+        }
+
+        .sidebar-toggle svg {
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.collapsed ~ .sidebar-toggle svg {
+            transform: rotate(180deg);
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+
         .dashboard {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 30px;
+        }
+
+        /* サイドバー内フィルター */
+        .sidebar-section {
+            margin-bottom: 24px;
+        }
+
+        .sidebar-section-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--text-dark);
+            background: var(--bg-white);
+        }
+
+        .sidebar input[type="date"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--text-dark);
+            background: var(--bg-white);
+            margin-bottom: 8px;
+        }
+
+        .date-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-bottom: 4px;
         }
 
         /* ローディング */
@@ -281,14 +383,18 @@
         }
 
         .filter-btn {
-            padding: 6px 14px;
+            padding: 4px 10px;
             border: 1px solid var(--border-color);
             background: var(--bg-white);
             color: var(--text-light);
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             transition: all 0.2s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
         }
 
         .filter-btn:hover {
@@ -300,6 +406,35 @@
             background: var(--primary-blue);
             border-color: var(--primary-blue);
             color: white;
+        }
+
+        .filter-search {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+        }
+
+        .filter-btn-row.scrollable {
+            max-height: 200px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .filter-btn-row.scrollable::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .filter-btn-row.scrollable::-webkit-scrollbar-track {
+            background: var(--gray-100);
+            border-radius: 2px;
+        }
+
+        .filter-btn-row.scrollable::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 2px;
         }
 
         .selected-tags {
@@ -540,10 +675,86 @@
             font-size: 0.8rem;
         }
 
+        /* 進捗ペースセクション */
+        .progress-pace-section {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+        }
+
+        .progress-pace-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .progress-pace-card {
+            background: var(--blue-50);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .pace-label {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 8px;
+        }
+
+        .pace-value {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .pace-value.positive {
+            color: var(--primary-blue);
+        }
+
+        .pace-value.negative {
+            color: var(--primary-red);
+        }
+
+        .pace-value.neutral {
+            color: var(--text-dark);
+        }
+
+        .pace-sub {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .progress-pace-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
         /* レスポンシブ */
         @media (max-width: 1200px) {
             .analysis-kpi-grid {
                 grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 70px;
+                z-index: 90;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            }
+
+            .sidebar.collapsed {
+                left: -280px;
+            }
+
+            .sidebar-toggle {
+                position: fixed;
             }
         }
 
@@ -554,8 +765,12 @@
                 padding: 15px;
             }
 
-            .dashboard {
+            .main-content {
                 padding: 15px;
+            }
+
+            .dashboard {
+                padding: 0;
             }
 
             .analysis-kpi-grid {
@@ -570,6 +785,10 @@
 
             .filter-date-row {
                 flex-wrap: wrap;
+            }
+
+            .progress-pace-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
     </style>
@@ -587,7 +806,7 @@
                 <path d="M12 14h6v12h-6zM22 10h6v16h-6z" fill="white"/>
             </svg>
             <span class="logo-text">DigiMan</span>
-            <span class="page-title-text">全社員 営業分析ダッシュボード</span>
+            <span class="page-title-text">月内管理ダッシュボード</span>
         </div>
         <div class="header-right">
             <a href="file:///Users/ebineryota/all_staff_comparison.html" class="nav-btn">
@@ -597,7 +816,7 @@
                     <rect x="14" y="14" width="7" height="7"/>
                     <rect x="3" y="14" width="7" height="7"/>
                 </svg>
-                過去比較表
+                過去比較
             </a>
             <div class="last-updated" id="lastUpdated"></div>
             <button class="refresh-btn" id="refreshBtn" onclick="refreshData()">
@@ -610,31 +829,58 @@
         </div>
     </div>
 
-    <div class="dashboard">
-        <div class="error-message" id="errorMessage"></div>
+    <div class="app-container">
+        <!-- サイドバー -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">表示期間</div>
+                <div class="date-label">開始日</div>
+                <input type="date" id="analysisStartDate">
+                <div class="date-label">終了日</div>
+                <input type="date" id="analysisEndDate">
+                <button class="filter-btn" style="width: 100%; margin-top: 8px;" onclick="applyAnalysisFilters()">適用</button>
+            </div>
 
-        <!-- フィルターセクション -->
-        <div class="analysis-filter-section" id="analysisFilterSection">
-            <div class="filter-group-label">案件で絞り込み</div>
-            <div class="filter-row" id="analysisProjectFilterRow"></div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">種別</div>
+                <div class="filter-btn-row" id="employeeTypeFilterRow"></div>
+            </div>
 
-            <div class="filter-group-label">担当者で絞り込み</div>
-            <div class="filter-row" id="analysisMemberFilterRow"></div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">案件</div>
+                <div class="filter-btn-row" id="analysisProjectFilterRow"></div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">担当者</div>
+                <input type="text" class="filter-search" id="memberSearchInput" placeholder="名前で検索..." oninput="filterMemberButtons()">
+                <div class="filter-btn-row scrollable" id="analysisMemberFilterRow"></div>
+            </div>
 
             <div class="selected-tags empty" id="analysisSelectedTags"></div>
+        </div>
 
-            <div class="filter-date-row">
-                <label>期間:</label>
-                <input type="date" id="analysisStartDate">
-                <span>〜</span>
-                <input type="date" id="analysisEndDate">
-                <button class="filter-btn" onclick="applyAnalysisFilters()">適用</button>
-            </div>
+        <!-- サイドバートグルボタン -->
+        <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 18l-6-6 6-6"/>
+            </svg>
+        </button>
+
+        <!-- メインコンテンツ -->
+        <div class="main-content">
+            <div class="dashboard">
+                <div class="error-message" id="errorMessage"></div>
+
+                <!-- 前月同日比 進捗ペース -->
+        <div class="progress-pace-section">
+            <div class="section-title">前月同日比 進捗ペース</div>
+            <div class="progress-pace-grid" id="progressPaceGrid"></div>
         </div>
 
         <!-- 実数指標 -->
         <div class="analysis-kpi-section">
-            <div class="analysis-kpi-title">実数指標</div>
+            <div class="analysis-kpi-title">今月の実績</div>
             <div class="analysis-kpi-grid" id="analysisNumberKPIs"></div>
         </div>
 
@@ -686,12 +932,43 @@
             </div>
         </div>
 
-        <div class="footer">
-            &copy; DigiMan Inc.
+                <div class="footer">
+                    &copy; DigiMan Inc.
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
+        // サイドバー開閉
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.getElementById('sidebarToggle');
+            sidebar.classList.toggle('collapsed');
+
+            // 状態を保存
+            localStorage.setItem('indexSidebarCollapsed', sidebar.classList.contains('collapsed'));
+
+            // トグルボタンの位置を更新
+            if (sidebar.classList.contains('collapsed')) {
+                toggle.style.left = '0';
+            } else {
+                toggle.style.left = '280px';
+            }
+        }
+
+        // サイドバーの初期状態を復元
+        function initSidebar() {
+            const collapsed = localStorage.getItem('indexSidebarCollapsed') === 'true';
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.getElementById('sidebarToggle');
+
+            if (collapsed) {
+                sidebar.classList.add('collapsed');
+                toggle.style.left = '0';
+            }
+        }
+
         // グローバル変数
         let analysisData = null;
         let analysisSelectedProjects = [];
@@ -707,7 +984,7 @@
         let memberProjectMap = {};
 
         // 除外する担当者
-        const EXCLUDED_MEMBERS = ['山田　香苗'];
+        const EXCLUDED_MEMBERS = ['@山田　香苗', '@須藤　明里/akari sudo'];
 
         const colors = {
             primary: '#1155cc',
@@ -720,11 +997,31 @@
             appo: '#00a2da'
         };
 
-        // API URL（全社員用のsourceパラメータを追加）
-        const API_URL = 'https://script.google.com/macros/s/AKfycbwG_1cvgfnnNuK9PuhmXJOSeBuS8kFzJbf-R1p0qvySu0BW8GYKJKCKzHJ4Ny11FtkV/exec';
+        // Turso Database Configuration
+        const TURSO_CONFIG = {
+            url: 'https://all-staff-rawdata-ebidigi.aws-ap-northeast-1.turso.io',
+            authToken: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NzE0NjQ3MDQsImlkIjoiNGM0YTZjMjMtYWM4Zi00NmNlLThkMGQtNzJkMTk4YjMwMzkxIiwicmlkIjoiMGNlYTQzNzgtYzk2My00MjIzLWI4MmYtMTg1MzNkZDhjYWEzIn0.H-wdaWOE_bVajLf3yc_MkoaMuTr0-4zEeXONxQZmdXm_r3aVerE55gXsINoS4vdglt8G3gzFRSl7wSHRAL9vDQ'
+        };
+
+        // Turso Database Configuration (Talent/Employee Master)
+        const TURSO_CONFIG_TALENT = {
+            url: 'https://digiman-talent-ebidigi.aws-ap-northeast-1.turso.io',
+            authToken: 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NzE0Njk4NDAsImlkIjoiODQ1ODVmNTUtZmIzZS00ZGNlLWExNWItOTIxMmRkNWRkMGM5IiwicmlkIjoiOWM2M2U4NmItZjk5Ny00YmFjLWIxMzctOTc3YWQwYzQ0NWZkIn0.3zDDfpaWtnje4hUS-mhte6USz4aU_Wl4CyKh3DlWHCh4-slVTFiDlCICb975mN4bdyHjxuVNgchLW0VBXhEsBg'
+        };
+
+        // 社員種別マスターデータ
+        let employeeMaster = {};
+        const EMPLOYEE_TYPE_LABELS = {
+            'employee': '社員',
+            'contractor': '業務委託',
+            'intern': 'インターン'
+        };
+
+        // 種別フィルター
+        let selectedEmployeeTypes = [];
 
         // キャッシュ設定
-        const ANALYSIS_CACHE_KEY = 'allStaffAnalysisDataCache';
+        const ANALYSIS_CACHE_KEY = 'allStaffAnalysisDataCache_turso';
         const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5分
 
         // ユーティリティ関数
@@ -767,7 +1064,116 @@
             }
         }
 
-        // データ読み込み
+        // Turso HTTP API Query Function (v2 format)
+        async function queryTursoTalent(sql, args = []) {
+            const payload = {
+                statements: [
+                    { q: sql, params: args }
+                ]
+            };
+
+            const response = await fetch(TURSO_CONFIG_TALENT.url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${TURSO_CONFIG_TALENT.authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Turso Talent API error: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            if (result[0] && result[0].error) {
+                throw new Error(result[0].error.message || result[0].error);
+            }
+
+            const queryResult = result[0];
+            if (!queryResult || !queryResult.results) {
+                return [];
+            }
+
+            const cols = queryResult.results.columns || [];
+            const rows = queryResult.results.rows || [];
+
+            return rows.map(row => {
+                const obj = {};
+                row.forEach((cell, i) => {
+                    obj[cols[i]] = cell;
+                });
+                return obj;
+            });
+        }
+
+        // 社員マスターデータを読み込み
+        async function loadEmployeeMaster() {
+            try {
+                const sql = `SELECT name, employee_type, department, position FROM employees WHERE retire_date IS NULL`;
+                const employees = await queryTursoTalent(sql);
+
+                employeeMaster = {};
+                employees.forEach(e => {
+                    employeeMaster[e.name] = {
+                        type: e.employee_type || 'employee',
+                        department: e.department,
+                        position: e.position
+                    };
+                });
+                console.log('Employee master loaded:', Object.keys(employeeMaster).length, 'employees');
+            } catch (error) {
+                console.error('Failed to load employee master:', error);
+            }
+        }
+
+        async function queryTurso(sql, args = []) {
+            const payload = {
+                statements: [
+                    { q: sql, params: args }
+                ]
+            };
+
+            const response = await fetch(TURSO_CONFIG.url, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${TURSO_CONFIG.authToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Turso API error: ${response.status}`);
+            }
+
+            const result = await response.json();
+
+            // Check for errors
+            if (result[0] && result[0].error) {
+                throw new Error(result[0].error.message || result[0].error);
+            }
+
+            // Transform Turso v2 response to array of objects
+            const queryResult = result[0];
+            if (!queryResult || !queryResult.results) {
+                return [];
+            }
+
+            const cols = queryResult.results.columns || [];
+            const rows = queryResult.results.rows || [];
+
+            return rows.map(row => {
+                const obj = {};
+                row.forEach((cell, i) => {
+                    obj[cols[i]] = cell;
+                });
+                return obj;
+            });
+        }
+
+        // Load data from Turso
         async function loadAnalysisData(forceRefresh = false) {
             const startDate = document.getElementById('analysisStartDate').value;
             const endDate = document.getElementById('analysisEndDate').value;
@@ -785,23 +1191,68 @@
                 return;
             }
 
-            // 全社員用APIを呼び出し
-            let apiUrl = `${API_URL}?type=rawdata&source=all_staff`;
-            if (startDate) apiUrl += `&startDate=${startDate}`;
-            if (endDate) apiUrl += `&endDate=${endDate}`;
-
             showLoading();
             try {
-                const response = await fetch(apiUrl);
-                analysisData = await response.json();
-                console.log('Analysis data loaded from API:', analysisData);
-                console.log('previousMonthDaily:', analysisData.previousMonthDaily);
-                if (analysisData.error) throw new Error(analysisData.error);
+                // Query performance data from Turso
+                let sql = `
+                    SELECT
+                        member_name as name,
+                        project_name as project,
+                        input_date as date,
+                        COALESCE(call_count, 0) as calls,
+                        COALESCE(pr_count, 0) as pr,
+                        COALESCE(appointment_count, 0) as appo,
+                        COALESCE(call_hours, 0) as callTime
+                    FROM performance_rawdata
+                    WHERE data_source = 'new'
+                `;
+
+                const args = [];
+                if (startDate) {
+                    sql += ` AND input_date >= ?`;
+                    args.push(startDate);
+                }
+                if (endDate) {
+                    sql += ` AND input_date <= ?`;
+                    args.push(endDate);
+                }
+                sql += ` ORDER BY input_date`;
+
+                const records = await queryTurso(sql, args);
+                console.log('Turso records loaded:', records.length);
+
+                // Get unique projects and members for filters
+                const projects = [...new Set(records.map(r => r.project).filter(p => p))];
+                const members = [...new Set(records.map(r => r.name).filter(n => n))];
+
+                // Calculate previous month data for comparisons
+                const prevMonthData = await getPreviousMonthData(startDate, endDate);
+
+                // Build analysis data structure
+                analysisData = {
+                    records: records.map(r => ({
+                        name: r.name || '',
+                        project: r.project || '',
+                        date: r.date || '',
+                        calls: parseInt(r.calls) || 0,
+                        pr: parseInt(r.pr) || 0,
+                        appo: parseInt(r.appo) || 0,
+                        callTime: parseFloat(r.callTime) || 0
+                    })),
+                    filters: {
+                        projects: projects.sort(),
+                        members: members.sort()
+                    },
+                    comparisons: calculateComparisons(records, prevMonthData),
+                    previousMonthDaily: prevMonthData
+                };
+
+                console.log('Analysis data built from Turso:', analysisData);
                 setAnalysisCache(cacheKey, analysisData);
                 renderAnalysisPage();
-                document.getElementById('lastUpdated').textContent = `最終更新: ${new Date().toLocaleString('ja-JP')}`;
+                document.getElementById('lastUpdated').textContent = `最終更新: ${new Date().toLocaleString('ja-JP')} (Turso)`;
             } catch (error) {
-                console.error('Analysis data load error:', error);
+                console.error('Turso data load error:', error);
                 document.getElementById('errorMessage').textContent = 'エラー: ' + error.message;
                 document.getElementById('errorMessage').style.display = 'block';
             } finally {
@@ -809,21 +1260,141 @@
             }
         }
 
-        async function fetchAnalysisDataInBackground(startDate, endDate, cacheKey) {
-            let apiUrl = `${API_URL}?type=rawdata&source=all_staff`;
-            if (startDate) apiUrl += `&startDate=${startDate}`;
-            if (endDate) apiUrl += `&endDate=${endDate}`;
+        // Get previous month data for comparisons
+        async function getPreviousMonthData(startDate, endDate) {
+            if (!startDate) return { daily: [] };
 
-            try {
-                const response = await fetch(apiUrl);
-                const newData = await response.json();
-                if (!newData.error) {
-                    analysisData = newData;
-                    setAnalysisCache(cacheKey, newData);
-                    renderAnalysisPage();
-                    document.getElementById('lastUpdated').textContent = `最終更新: ${new Date().toLocaleString('ja-JP')}`;
-                    console.log('Analysis data updated from background fetch');
+            const start = new Date(startDate);
+            const prevMonthStart = new Date(start.getFullYear(), start.getMonth() - 1, 1);
+            const prevMonthEnd = new Date(start.getFullYear(), start.getMonth(), 0);
+
+            const sql = `
+                SELECT
+                    input_date as date,
+                    SUM(COALESCE(call_count, 0)) as calls,
+                    SUM(COALESCE(pr_count, 0)) as pr,
+                    SUM(COALESCE(appointment_count, 0)) as appo,
+                    SUM(COALESCE(call_hours, 0)) as callTime
+                FROM performance_rawdata
+                WHERE data_source = 'new'
+                  AND input_date >= ?
+                  AND input_date <= ?
+                GROUP BY input_date
+                ORDER BY input_date
+            `;
+
+            const rows = await queryTurso(sql, [formatDateLocal(prevMonthStart), formatDateLocal(prevMonthEnd)]);
+
+            return {
+                daily: rows.map(r => ({
+                    date: r.date,
+                    calls: parseInt(r.calls) || 0,
+                    pr: parseInt(r.pr) || 0,
+                    appo: parseInt(r.appo) || 0,
+                    callTime: parseFloat(r.callTime) || 0,
+                    callToPR: r.calls > 0 ? Math.round(r.pr / r.calls * 10000) / 100 : 0,
+                    prToAppo: r.pr > 0 ? Math.round(r.appo / r.pr * 10000) / 100 : 0,
+                    callToAppo: r.calls > 0 ? Math.round(r.appo / r.calls * 10000) / 100 : 0,
+                    callsPerHour: r.callTime > 0 ? Math.round(r.calls / r.callTime * 10) / 10 : 0
+                }))
+            };
+        }
+
+        // Calculate comparisons with previous month and all-time
+        function calculateComparisons(currentRecords, prevMonthData) {
+            // Current period totals
+            const currentTotals = currentRecords.reduce((acc, r) => {
+                acc.calls += parseInt(r.calls) || 0;
+                acc.pr += parseInt(r.pr) || 0;
+                acc.appo += parseInt(r.appo) || 0;
+                return acc;
+            }, { calls: 0, pr: 0, appo: 0 });
+
+            const currentCallToPR = currentTotals.calls > 0 ? currentTotals.pr / currentTotals.calls * 100 : 0;
+            const currentPrToAppo = currentTotals.pr > 0 ? currentTotals.appo / currentTotals.pr * 100 : 0;
+            const currentCallToAppo = currentTotals.calls > 0 ? currentTotals.appo / currentTotals.calls * 100 : 0;
+
+            // Previous month totals
+            const prevTotals = prevMonthData.daily.reduce((acc, r) => {
+                acc.calls += r.calls || 0;
+                acc.pr += r.pr || 0;
+                acc.appo += r.appo || 0;
+                return acc;
+            }, { calls: 0, pr: 0, appo: 0 });
+
+            const prevCallToPR = prevTotals.calls > 0 ? prevTotals.pr / prevTotals.calls * 100 : 0;
+            const prevPrToAppo = prevTotals.pr > 0 ? prevTotals.appo / prevTotals.pr * 100 : 0;
+            const prevCallToAppo = prevTotals.calls > 0 ? prevTotals.appo / prevTotals.calls * 100 : 0;
+
+            return {
+                lastMonth: {
+                    callToPR: prevCallToPR > 0 ? currentCallToPR - prevCallToPR : 0,
+                    prToAppo: prevPrToAppo > 0 ? currentPrToAppo - prevPrToAppo : 0,
+                    callToAppo: prevCallToAppo > 0 ? currentCallToAppo - prevCallToAppo : 0
+                },
+                allTime: {
+                    callToPR: 0, // Would need historical data query
+                    prToAppo: 0,
+                    callToAppo: 0
                 }
+            };
+        }
+
+        async function fetchAnalysisDataInBackground(startDate, endDate, cacheKey) {
+            try {
+                // Re-query Turso in background
+                let sql = `
+                    SELECT
+                        member_name as name,
+                        project_name as project,
+                        input_date as date,
+                        COALESCE(call_count, 0) as calls,
+                        COALESCE(pr_count, 0) as pr,
+                        COALESCE(appointment_count, 0) as appo,
+                        COALESCE(call_hours, 0) as callTime
+                    FROM performance_rawdata
+                    WHERE data_source = 'new'
+                `;
+
+                const args = [];
+                if (startDate) {
+                    sql += ` AND input_date >= ?`;
+                    args.push(startDate);
+                }
+                if (endDate) {
+                    sql += ` AND input_date <= ?`;
+                    args.push(endDate);
+                }
+                sql += ` ORDER BY input_date`;
+
+                const records = await queryTurso(sql, args);
+                const projects = [...new Set(records.map(r => r.project).filter(p => p))];
+                const members = [...new Set(records.map(r => r.name).filter(n => n))];
+                const prevMonthData = await getPreviousMonthData(startDate, endDate);
+
+                const newData = {
+                    records: records.map(r => ({
+                        name: r.name || '',
+                        project: r.project || '',
+                        date: r.date || '',
+                        calls: parseInt(r.calls) || 0,
+                        pr: parseInt(r.pr) || 0,
+                        appo: parseInt(r.appo) || 0,
+                        callTime: parseFloat(r.callTime) || 0
+                    })),
+                    filters: {
+                        projects: projects.sort(),
+                        members: members.sort()
+                    },
+                    comparisons: calculateComparisons(records, prevMonthData),
+                    previousMonthDaily: prevMonthData
+                };
+
+                analysisData = newData;
+                setAnalysisCache(cacheKey, newData);
+                renderAnalysisPage();
+                document.getElementById('lastUpdated').textContent = `最終更新: ${new Date().toLocaleString('ja-JP')} (Turso)`;
+                console.log('Analysis data updated from Turso background fetch');
             } catch (error) {
                 console.error('Background fetch error:', error);
             }
@@ -842,12 +1413,220 @@
             if (!analysisData) return;
 
             buildMappings();
+            renderEmployeeTypeFilter();
             renderAnalysisFilters();
+            renderProgressPace();
             renderAnalysisKPIs();
             renderAnalysisChart();
             renderMemberCompareChart();
             initChartTypeSelector();
             initMemberChartTypeSelector();
+        }
+
+        // 前月同日比 進捗ペースを描画
+        async function renderProgressPace() {
+            const { aggregated } = getFilteredAnalysisData();
+            if (!aggregated) return;
+
+            const currentTotals = aggregated.totals;
+            const today = new Date();
+            const currentDay = today.getDate();
+
+            // 前月の同日までのデータを取得
+            const prevMonthSameDayData = await getPrevMonthSameDayData(currentDay);
+
+            const paceItems = [
+                { label: '架電数', current: currentTotals.calls, prev: prevMonthSameDayData.calls },
+                { label: 'PR数', current: currentTotals.pr, prev: prevMonthSameDayData.pr },
+                { label: 'アポ数', current: currentTotals.appo, prev: prevMonthSameDayData.appo },
+                { label: '稼働時間', current: currentTotals.callTime, prev: prevMonthSameDayData.callTime, suffix: 'H' }
+            ];
+
+            document.getElementById('progressPaceGrid').innerHTML = paceItems.map(item => {
+                const diff = item.current - item.prev;
+                const pctChange = item.prev > 0 ? Math.round((diff / item.prev) * 100) : (item.current > 0 ? 100 : 0);
+                const paceClass = diff > 0 ? 'positive' : (diff < 0 ? 'negative' : 'neutral');
+                const sign = diff > 0 ? '+' : '';
+                const suffix = item.suffix || '';
+
+                return `
+                    <div class="progress-pace-card">
+                        <div class="pace-label">${item.label}</div>
+                        <div class="pace-value ${paceClass}">${sign}${diff.toLocaleString()}${suffix}</div>
+                        <div class="pace-sub">前月同日比 ${sign}${pctChange}%</div>
+                        <div class="pace-sub">今月: ${item.current.toLocaleString()}${suffix} / 前月: ${item.prev.toLocaleString()}${suffix}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 前月の同日までのデータを取得
+        async function getPrevMonthSameDayData(sameDay) {
+            const now = new Date();
+            const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const prevMonthSameDay = new Date(now.getFullYear(), now.getMonth() - 1, sameDay);
+
+            // 前月の日数を超えないように調整
+            const prevMonthLastDay = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+            if (sameDay > prevMonthLastDay) {
+                prevMonthSameDay.setDate(prevMonthLastDay);
+            }
+
+            // 除外メンバーのプレースホルダ
+            const excludePlaceholders = EXCLUDED_MEMBERS.map(() => '?').join(',');
+
+            // 種別フィルターが有効な場合は担当者別でデータを取得してJSで集計
+            if (selectedEmployeeTypes.length > 0) {
+                let sql = `
+                    SELECT
+                        member_name,
+                        SUM(COALESCE(call_count, 0)) as calls,
+                        SUM(COALESCE(pr_count, 0)) as pr,
+                        SUM(COALESCE(appointment_count, 0)) as appo,
+                        SUM(COALESCE(call_hours, 0)) as callTime
+                    FROM performance_rawdata
+                    WHERE data_source = 'new'
+                      AND input_date >= ?
+                      AND input_date <= ?
+                      AND member_name NOT IN (${excludePlaceholders})
+                `;
+                const args = [formatDateLocal(prevMonthStart), formatDateLocal(prevMonthSameDay), ...EXCLUDED_MEMBERS];
+
+                // プロジェクト/担当者フィルター
+                if (analysisSelectedProjects.length > 0) {
+                    sql += ` AND project_name IN (${analysisSelectedProjects.map(() => '?').join(',')})`;
+                    args.push(...analysisSelectedProjects);
+                }
+                if (analysisSelectedMembers.length > 0) {
+                    sql += ` AND member_name IN (${analysisSelectedMembers.map(() => '?').join(',')})`;
+                    args.push(...analysisSelectedMembers);
+                }
+
+                sql += ` GROUP BY member_name`;
+
+                try {
+                    const rows = await queryTurso(sql, args);
+                    // 種別フィルターをJSで適用
+                    const filtered = rows.filter(r => selectedEmployeeTypes.includes(getEmployeeType(r.member_name)));
+                    const totals = filtered.reduce((acc, r) => {
+                        acc.calls += parseInt(r.calls) || 0;
+                        acc.pr += parseInt(r.pr) || 0;
+                        acc.appo += parseInt(r.appo) || 0;
+                        acc.callTime += parseFloat(r.callTime) || 0;
+                        return acc;
+                    }, { calls: 0, pr: 0, appo: 0, callTime: 0 });
+                    return totals;
+                } catch (error) {
+                    console.error('Error fetching prev month same day data:', error);
+                    return { calls: 0, pr: 0, appo: 0, callTime: 0 };
+                }
+            }
+
+            // 種別フィルターなしの場合は従来通り集計
+            let sql = `
+                SELECT
+                    SUM(COALESCE(call_count, 0)) as calls,
+                    SUM(COALESCE(pr_count, 0)) as pr,
+                    SUM(COALESCE(appointment_count, 0)) as appo,
+                    SUM(COALESCE(call_hours, 0)) as callTime
+                FROM performance_rawdata
+                WHERE data_source = 'new'
+                  AND input_date >= ?
+                  AND input_date <= ?
+                  AND member_name NOT IN (${excludePlaceholders})
+            `;
+
+            const args = [formatDateLocal(prevMonthStart), formatDateLocal(prevMonthSameDay), ...EXCLUDED_MEMBERS];
+
+            // フィルター適用
+            if (analysisSelectedProjects.length > 0) {
+                sql += ` AND project_name IN (${analysisSelectedProjects.map(() => '?').join(',')})`;
+                args.push(...analysisSelectedProjects);
+            }
+            if (analysisSelectedMembers.length > 0) {
+                sql += ` AND member_name IN (${analysisSelectedMembers.map(() => '?').join(',')})`;
+                args.push(...analysisSelectedMembers);
+            }
+
+            try {
+                const rows = await queryTurso(sql, args);
+                if (rows.length > 0) {
+                    return {
+                        calls: parseInt(rows[0].calls) || 0,
+                        pr: parseInt(rows[0].pr) || 0,
+                        appo: parseInt(rows[0].appo) || 0,
+                        callTime: parseFloat(rows[0].callTime) || 0
+                    };
+                }
+            } catch (error) {
+                console.error('Error fetching prev month same day data:', error);
+            }
+
+            return { calls: 0, pr: 0, appo: 0, callTime: 0 };
+        }
+
+        // 種別フィルターをレンダリング
+        function renderEmployeeTypeFilter() {
+            const types = ['employee', 'contractor', 'intern'];
+            document.getElementById('employeeTypeFilterRow').innerHTML = types.map(t => `
+                <button class="filter-btn ${selectedEmployeeTypes.includes(t) ? 'active' : ''}"
+                        onclick="toggleEmployeeTypeFilter('${t}')">${EMPLOYEE_TYPE_LABELS[t]}</button>
+            `).join('');
+        }
+
+        // 種別フィルターの切り替え
+        function toggleEmployeeTypeFilter(type) {
+            if (selectedEmployeeTypes.includes(type)) {
+                selectedEmployeeTypes = selectedEmployeeTypes.filter(t => t !== type);
+            } else {
+                selectedEmployeeTypes.push(type);
+            }
+            renderEmployeeTypeFilter();
+            renderAnalysisFilters();
+            renderAnalysisKPIs();
+            renderAnalysisChart();
+            renderMemberCompareChart();
+        }
+
+        // 担当者の種別を取得（部分マッチ対応）
+        function getEmployeeType(name) {
+            // 完全一致
+            if (employeeMaster[name]) {
+                return employeeMaster[name].type;
+            }
+
+            // 部分マッチ: talentの名前がperformance名の先頭に含まれるか
+            for (const talentName of Object.keys(employeeMaster)) {
+                if (name.startsWith(talentName)) {
+                    return employeeMaster[talentName].type;
+                }
+            }
+
+            // 逆方向: performanceの名前がtalentの先頭部分と一致するか
+            for (const talentName of Object.keys(employeeMaster)) {
+                if (talentName.startsWith(name)) {
+                    return employeeMaster[talentName].type;
+                }
+            }
+
+            // スペースやスラッシュで区切った最初の部分で比較
+            const normalizedName = name.replace(/[@　\s]/g, '').split('/')[0];
+            for (const talentName of Object.keys(employeeMaster)) {
+                const normalizedTalent = talentName.replace(/[@　\s]/g, '').split('/')[0];
+                if (normalizedName === normalizedTalent || normalizedName.startsWith(normalizedTalent) || normalizedTalent.startsWith(normalizedName)) {
+                    return employeeMaster[talentName].type;
+                }
+            }
+
+            return 'employee';
+        }
+
+        // 種別でフィルタリングされたメンバーを取得
+        function getMembersFilteredByType(members) {
+            if (selectedEmployeeTypes.length === 0) {
+                return members;
+            }
+            return members.filter(m => selectedEmployeeTypes.includes(getEmployeeType(m)));
         }
 
         function buildMappings() {
@@ -882,7 +1661,12 @@
 
             const projects = analysisData.filters.projects || [];
             // 除外メンバーをフィルターリストから除外
-            const members = (analysisData.filters.members || []).filter(m => !EXCLUDED_MEMBERS.includes(m));
+            let members = (analysisData.filters.members || []).filter(m => !EXCLUDED_MEMBERS.includes(m));
+
+            // 種別フィルターを適用
+            if (selectedEmployeeTypes.length > 0) {
+                members = members.filter(m => selectedEmployeeTypes.includes(getEmployeeType(m)));
+            }
 
             // 双方向連動フィルター
             let availableProjects = new Set(projects);
@@ -916,21 +1700,26 @@
             analysisSelectedProjects = analysisSelectedProjects.filter(p => availableProjects.has(p));
             analysisSelectedMembers = analysisSelectedMembers.filter(m => availableMembers.has(m));
 
-            const hasSelection = analysisSelectedProjects.length > 0 || analysisSelectedMembers.length > 0;
+            const hasSelection = analysisSelectedProjects.length > 0 || analysisSelectedMembers.length > 0 || selectedEmployeeTypes.length > 0;
 
             document.getElementById('analysisProjectFilterRow').innerHTML = availableProjectList.map(p => `
                 <button class="filter-btn ${analysisSelectedProjects.includes(p) ? 'active' : ''}"
                         onclick="toggleAnalysisFilter('project', '${p}')">${p}</button>
             `).join('');
 
-            document.getElementById('analysisMemberFilterRow').innerHTML = availableMemberList.map(m => `
-                <button class="filter-btn ${analysisSelectedMembers.includes(m) ? 'active' : ''}"
-                        onclick="toggleAnalysisFilter('member', '${m}')">${m}</button>
-            `).join('');
+            // Store member list for search filtering
+            window.currentMemberList = availableMemberList;
+            renderMemberFilterButtons();
 
             const tagsContainer = document.getElementById('analysisSelectedTags');
             tagsContainer.className = hasSelection ? 'selected-tags' : 'selected-tags empty';
             tagsContainer.innerHTML = `
+                ${selectedEmployeeTypes.map(t => `
+                    <span class="tag" style="background: #9b59b6;">
+                        ${EMPLOYEE_TYPE_LABELS[t]}
+                        <span class="tag-remove" onclick="removeEmployeeTypeTag('${t}')">&times;</span>
+                    </span>
+                `).join('')}
                 ${analysisSelectedProjects.map(p => `
                     <span class="tag project">
                         ${p}
@@ -945,6 +1734,42 @@
                 `).join('')}
                 ${hasSelection ? '<button class="clear-all-btn" onclick="clearAnalysisFilters()">クリア</button>' : ''}
             `;
+        }
+
+        // Sort members by employee type: 社員 → インターン → 業務委託
+        function sortMembersByType(members) {
+            const typeOrder = { 'employee': 0, 'intern': 1, 'contractor': 2 };
+            return [...members].sort((a, b) => {
+                const typeA = typeOrder[getEmployeeType(a)] ?? 3;
+                const typeB = typeOrder[getEmployeeType(b)] ?? 3;
+                if (typeA !== typeB) return typeA - typeB;
+                return a.localeCompare(b, 'ja');
+            });
+        }
+
+        // Render member filter buttons with search filtering
+        function renderMemberFilterButtons() {
+            const searchInput = document.getElementById('memberSearchInput');
+            const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+            const memberList = window.currentMemberList || [];
+
+            let filteredMembers = searchTerm
+                ? memberList.filter(m => m.toLowerCase().includes(searchTerm))
+                : memberList;
+
+            // Sort by employee type
+            filteredMembers = sortMembersByType(filteredMembers);
+
+            document.getElementById('analysisMemberFilterRow').innerHTML = filteredMembers.map(m => `
+                <button class="filter-btn ${analysisSelectedMembers.includes(m) ? 'active' : ''}"
+                        onclick="toggleAnalysisFilter('member', '${m.replace(/'/g, "\\'")}')"
+                        title="${m}">${m.replace(/@/g, '').split('/')[0]}</button>
+            `).join('');
+        }
+
+        // Filter member buttons on search input
+        function filterMemberButtons() {
+            renderMemberFilterButtons();
         }
 
         function toggleAnalysisFilter(type, value) {
@@ -979,9 +1804,20 @@
             renderMemberCompareChart();
         }
 
+        function removeEmployeeTypeTag(type) {
+            selectedEmployeeTypes = selectedEmployeeTypes.filter(t => t !== type);
+            renderEmployeeTypeFilter();
+            renderAnalysisFilters();
+            renderAnalysisKPIs();
+            renderAnalysisChart();
+            renderMemberCompareChart();
+        }
+
         function clearAnalysisFilters() {
             analysisSelectedProjects = [];
             analysisSelectedMembers = [];
+            selectedEmployeeTypes = [];
+            renderEmployeeTypeFilter();
             renderAnalysisFilters();
             renderAnalysisKPIs();
             renderAnalysisChart();
@@ -999,6 +1835,11 @@
 
             // 除外メンバーをフィルタリング
             filtered = filtered.filter(r => !EXCLUDED_MEMBERS.includes(r.name));
+
+            // 種別フィルター
+            if (selectedEmployeeTypes.length > 0) {
+                filtered = filtered.filter(r => selectedEmployeeTypes.includes(getEmployeeType(r.name)));
+            }
 
             if (analysisSelectedProjects.length > 0) {
                 filtered = filtered.filter(r => analysisSelectedProjects.includes(r.project));
@@ -1418,6 +2259,11 @@
             // 除外メンバーをフィルタリング
             filtered = filtered.filter(r => !EXCLUDED_MEMBERS.includes(r.name));
 
+            // 種別フィルター
+            if (selectedEmployeeTypes.length > 0) {
+                filtered = filtered.filter(r => selectedEmployeeTypes.includes(getEmployeeType(r.name)));
+            }
+
             // フィルター適用
             if (analysisSelectedProjects.length > 0) {
                 filtered = filtered.filter(r => analysisSelectedProjects.includes(r.project));
@@ -1457,13 +2303,19 @@
         }
 
         // 初期化
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            // サイドバー初期化
+            initSidebar();
+
             // デフォルトの日付範囲を設定（月初〜今日）
             const now = new Date();
             const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
 
             document.getElementById('analysisStartDate').value = formatDateLocal(firstDay);
             document.getElementById('analysisEndDate').value = formatDateLocal(now);
+
+            // 社員マスターを先に読み込み
+            await loadEmployeeMaster();
 
             // データ読み込み
             loadAnalysisData();
