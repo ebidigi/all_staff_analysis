@@ -181,6 +181,38 @@
             background: white;
         }
 
+        /* 日付範囲選択 */
+        .date-range-picker {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .date-range-picker input[type="date"] {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            color: var(--text-dark);
+            cursor: pointer;
+            min-width: 140px;
+        }
+
+        .date-range-picker input[type="date"]:hover {
+            border-color: var(--gray-300);
+        }
+
+        .date-range-picker input[type="date"]:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+        }
+
+        .date-separator {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
         /* 検索付きドロップダウン */
         .searchable-select {
             position: relative;
@@ -605,7 +637,7 @@
             <span class="mode-badge">プレゼンモード</span>
         </div>
         <div class="header-right">
-            <a href="index.html" class="back-btn">
+            <a id="backToDashboard" href="index.html" class="back-btn">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
@@ -638,18 +670,11 @@
 
             <div class="settings-group">
                 <label class="settings-label">表示期間</label>
-                <div class="searchable-select" id="currentMonthContainer">
-                    <div class="searchable-select-trigger" onclick="toggleDropdown('currentMonthContainer')">
-                        <span id="currentMonthLabel">読み込み中...</span>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="6 9 12 15 18 9"/>
-                        </svg>
-                    </div>
-                    <div class="searchable-select-dropdown">
-                        <div class="searchable-select-options" id="currentMonthOptions"></div>
-                    </div>
+                <div class="date-range-picker">
+                    <input type="date" id="currentStartDate" onchange="updateDisplay()">
+                    <span class="date-separator">〜</span>
+                    <input type="date" id="currentEndDate" onchange="updateDisplay()">
                 </div>
-                <input type="hidden" id="currentMonthSelect" value="">
             </div>
 
             <div class="settings-group">
@@ -659,18 +684,11 @@
                 </label>
                 <div class="comparison-selector" id="comparisonSelector">
                     <span>vs</span>
-                    <div class="searchable-select" id="prevMonthContainer">
-                        <div class="searchable-select-trigger" onclick="toggleDropdown('prevMonthContainer')">
-                            <span id="prevMonthLabel">読み込み中...</span>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="6 9 12 15 18 9"/>
-                            </svg>
-                        </div>
-                        <div class="searchable-select-dropdown">
-                            <div class="searchable-select-options" id="prevMonthOptions"></div>
-                        </div>
+                    <div class="date-range-picker">
+                        <input type="date" id="prevStartDate" onchange="updateDisplay()">
+                        <span class="date-separator">〜</span>
+                        <input type="date" id="prevEndDate" onchange="updateDisplay()">
                     </div>
-                    <input type="hidden" id="prevMonthSelect" value="">
                 </div>
             </div>
 
@@ -768,11 +786,24 @@
 
         // ==================== 初期化 ====================
         document.addEventListener('DOMContentLoaded', async function() {
+            // 環境に応じてリンクを設定
+            setupNavigationLinks();
+
             await loadEmployeeMaster();
             await loadAllRecords();
             initSelectors();
             updateDisplay();
         });
+
+        function setupNavigationLinks() {
+            const currentPath = window.location.pathname;
+            const isLocalDeploy = currentPath.includes('all_staff_');
+
+            const backLink = document.getElementById('backToDashboard');
+            if (backLink) {
+                backLink.href = isLocalDeploy ? 'all_staff_analysis.html' : 'index.html';
+            }
+        }
 
         // ==================== データ取得 ====================
         async function executeTursoQuery(url, authToken, sql) {
@@ -862,32 +893,12 @@
             document.getElementById('projectSelectLabel').textContent = '全案件';
             document.getElementById('projectSelect').value = '';
 
-            // 月選択（カスタムドロップダウン）
-            const months = getAvailableMonths();
-
-            // 表示期間
-            const currentMonthOptions = document.getElementById('currentMonthOptions');
-            currentMonthOptions.innerHTML = months.map((m, i) =>
-                `<div class="searchable-select-option${i === 0 ? ' selected' : ''}" data-value="${m.value}" onclick="selectMonth('current', '${m.value}', '${m.label}')">${m.label}</div>`
-            ).join('');
-
-            // 比較期間
-            const prevMonthOptions = document.getElementById('prevMonthOptions');
-            prevMonthOptions.innerHTML = months.map((m, i) =>
-                `<div class="searchable-select-option${i === 1 ? ' selected' : ''}" data-value="${m.value}" onclick="selectMonth('prev', '${m.value}', '${m.label}')">${m.label}</div>`
-            ).join('');
-
-            // デフォルト選択（今月と前月）
-            if (months.length >= 2) {
-                document.getElementById('currentMonthSelect').value = months[0].value;
-                document.getElementById('currentMonthLabel').textContent = months[0].label;
-                document.getElementById('prevMonthSelect').value = months[1].value;
-                document.getElementById('prevMonthLabel').textContent = months[1].label;
-            }
+            // 日付範囲の初期値を設定
+            initDateRanges();
 
             // ドロップダウン外クリックで閉じる
             document.addEventListener('click', function(e) {
-                const dropdowns = ['projectSelectContainer', 'currentMonthContainer', 'prevMonthContainer'];
+                const dropdowns = ['projectSelectContainer'];
                 dropdowns.forEach(id => {
                     const container = document.getElementById(id);
                     if (container && !container.contains(e.target)) {
@@ -897,35 +908,73 @@
             });
         }
 
-        function getAvailableMonths() {
-            const monthSet = new Set();
-            allRecords.forEach(r => {
-                if (r.date) {
-                    const ym = r.date.substring(0, 7); // YYYY-MM
-                    monthSet.add(ym);
-                }
+        function initDateRanges() {
+            // データから日付範囲を取得
+            const dates = allRecords.map(r => r.date).filter(d => d).sort();
+            if (dates.length === 0) return;
+
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth();
+
+            // 表示期間: 今月の初日〜今日
+            const currentMonthStart = new Date(currentYear, currentMonth, 1);
+            const currentMonthEnd = today;
+
+            // 比較期間: 前月の同期間
+            const prevMonthStart = new Date(currentYear, currentMonth - 1, 1);
+            const prevMonthEnd = new Date(currentYear, currentMonth - 1, today.getDate());
+
+            // 前月の末日を超えないように調整
+            const lastDayOfPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
+            if (prevMonthEnd.getDate() > lastDayOfPrevMonth) {
+                prevMonthEnd.setDate(lastDayOfPrevMonth);
+            }
+
+            // 入力フィールドに設定
+            document.getElementById('currentStartDate').value = formatDateForInput(currentMonthStart);
+            document.getElementById('currentEndDate').value = formatDateForInput(currentMonthEnd);
+            document.getElementById('prevStartDate').value = formatDateForInput(prevMonthStart);
+            document.getElementById('prevEndDate').value = formatDateForInput(prevMonthEnd);
+
+            // データ範囲でmin/maxを設定
+            const minDate = dates[0];
+            const maxDate = dates[dates.length - 1];
+            ['currentStartDate', 'currentEndDate', 'prevStartDate', 'prevEndDate'].forEach(id => {
+                const input = document.getElementById(id);
+                input.min = minDate;
+                input.max = maxDate;
             });
-            return [...monthSet]
-                .sort((a, b) => b.localeCompare(a))
-                .map(ym => {
-                    const [year, month] = ym.split('-');
-                    return { value: ym, label: `${year}年${parseInt(month)}月` };
-                });
+        }
+
+        function formatDateForInput(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function formatDateForDisplay(dateStr) {
+            if (!dateStr) return '';
+            const [year, month, day] = dateStr.split('-');
+            return `${year}年${parseInt(month)}月${parseInt(day)}日`;
         }
 
         // ==================== 表示更新 ====================
         function updateDisplay() {
             const project = document.getElementById('projectSelect').value;
-            const currentMonth = document.getElementById('currentMonthSelect').value;
-            const prevMonth = document.getElementById('prevMonthSelect').value;
+            const currentStart = document.getElementById('currentStartDate').value;
+            const currentEnd = document.getElementById('currentEndDate').value;
+            const prevStart = document.getElementById('prevStartDate').value;
+            const prevEnd = document.getElementById('prevEndDate').value;
             const comparisonEnabled = isComparisonEnabled();
 
             // プロジェクト名
             document.getElementById('projectName').textContent = project || '全案件';
 
             // 表示期間
-            const currentLabel = formatMonthLabel(currentMonth);
-            const prevLabel = formatMonthLabel(prevMonth);
+            const currentLabel = formatPeriodLabel(currentStart, currentEnd);
+            const prevLabel = formatPeriodLabel(prevStart, prevEnd);
             if (comparisonEnabled) {
                 document.getElementById('comparisonPeriod').textContent = `${currentLabel} vs ${prevLabel}`;
             } else {
@@ -933,8 +982,8 @@
             }
 
             // データ集計
-            const currentData = aggregateData(filterByMonthAndProject(currentMonth, project));
-            const prevData = comparisonEnabled ? aggregateData(filterByMonthAndProject(prevMonth, project)) : null;
+            const currentData = aggregateData(filterByDateRangeAndProject(currentStart, currentEnd, project));
+            const prevData = comparisonEnabled ? aggregateData(filterByDateRangeAndProject(prevStart, prevEnd, project)) : null;
 
             // 実績カード
             renderNumberCards(currentData, prevData, comparisonEnabled);
@@ -943,7 +992,7 @@
             renderRateCards(currentData, prevData, comparisonEnabled);
 
             // 担当者別テーブル
-            renderMemberTable(currentMonth, prevMonth, project, comparisonEnabled);
+            renderMemberTableWithDateRange(currentStart, currentEnd, prevStart, prevEnd, project, comparisonEnabled);
 
             // セクション表示制御
             const hasNumbers = selectedMetrics.some(m => ['calls', 'pr', 'appo'].includes(m));
@@ -952,17 +1001,25 @@
             document.getElementById('ratesSection').style.display = hasRates ? 'block' : 'none';
         }
 
-        function formatMonthLabel(ym) {
-            if (!ym) return '';
-            const [year, month] = ym.split('-');
-            return `${year}年${parseInt(month)}月`;
+        function formatPeriodLabel(startDate, endDate) {
+            if (!startDate || !endDate) return '';
+            const start = formatDateForDisplay(startDate);
+            const end = formatDateForDisplay(endDate);
+            // 同じ月なら省略形で表示
+            if (startDate.substring(0, 7) === endDate.substring(0, 7)) {
+                const [year, month] = startDate.split('-');
+                const startDay = parseInt(startDate.split('-')[2]);
+                const endDay = parseInt(endDate.split('-')[2]);
+                return `${year}年${parseInt(month)}月${startDay}日〜${endDay}日`;
+            }
+            return `${start}〜${end}`;
         }
 
-        function filterByMonthAndProject(month, project) {
+        function filterByDateRangeAndProject(startDate, endDate, project) {
             return allRecords.filter(r => {
-                const matchMonth = r.date && r.date.startsWith(month);
+                const matchDate = r.date && r.date >= startDate && r.date <= endDate;
                 const matchProject = !project || r.project === project;
-                return matchMonth && matchProject;
+                return matchDate && matchProject;
             });
         }
 
@@ -1054,9 +1111,9 @@
         }
 
         // ==================== 担当者別テーブル ====================
-        function renderMemberTable(currentMonth, prevMonth, project, comparisonEnabled) {
-            const currentRecords = filterByMonthAndProject(currentMonth, project);
-            const prevRecords = comparisonEnabled ? filterByMonthAndProject(prevMonth, project) : [];
+        function renderMemberTableWithDateRange(currentStart, currentEnd, prevStart, prevEnd, project, comparisonEnabled) {
+            const currentRecords = filterByDateRangeAndProject(currentStart, currentEnd, project);
+            const prevRecords = comparisonEnabled ? filterByDateRangeAndProject(prevStart, prevEnd, project) : [];
 
             // 担当者別に集計
             const memberMap = {};
@@ -1123,27 +1180,12 @@
         }
 
         // ==================== UI操作 ====================
-        // ==================== ドロップダウン共通 ====================
-        function toggleDropdown(containerId) {
-            // 他のドロップダウンを閉じる
-            const allDropdowns = ['projectSelectContainer', 'currentMonthContainer', 'prevMonthContainer'];
-            allDropdowns.forEach(id => {
-                if (id !== containerId) {
-                    document.getElementById(id)?.classList.remove('open');
-                }
-            });
-
-            const container = document.getElementById(containerId);
+        function toggleProjectDropdown() {
+            const container = document.getElementById('projectSelectContainer');
             container.classList.toggle('open');
-
-            // 案件選択の場合は検索ボックスにフォーカス
-            if (containerId === 'projectSelectContainer' && container.classList.contains('open')) {
+            if (container.classList.contains('open')) {
                 document.getElementById('projectSearchInput').focus();
             }
-        }
-
-        function toggleProjectDropdown() {
-            toggleDropdown('projectSelectContainer');
         }
 
         function filterProjects() {
@@ -1184,24 +1226,6 @@
             document.getElementById('projectSelectContainer').classList.remove('open');
             document.getElementById('projectSearchInput').value = '';
             filterProjects(); // リセット
-
-            updateDisplay();
-        }
-
-        function selectMonth(type, value, label) {
-            const containerId = type === 'current' ? 'currentMonthContainer' : 'prevMonthContainer';
-            const optionsId = type === 'current' ? 'currentMonthOptions' : 'prevMonthOptions';
-            const selectId = type === 'current' ? 'currentMonthSelect' : 'prevMonthSelect';
-            const labelId = type === 'current' ? 'currentMonthLabel' : 'prevMonthLabel';
-
-            const options = document.querySelectorAll(`#${optionsId} .searchable-select-option`);
-            options.forEach(option => {
-                option.classList.toggle('selected', option.dataset.value === value);
-            });
-
-            document.getElementById(selectId).value = value;
-            document.getElementById(labelId).textContent = label;
-            document.getElementById(containerId).classList.remove('open');
 
             updateDisplay();
         }
