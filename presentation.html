@@ -213,6 +213,34 @@
             font-size: 14px;
         }
 
+        /* 適用ボタン */
+        .apply-group {
+            align-self: flex-end;
+        }
+
+        .apply-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 24px;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .apply-btn:hover {
+            background: #0d47a1;
+        }
+
+        .apply-btn:active {
+            transform: scale(0.98);
+        }
+
         /* 検索付きドロップダウン */
         .searchable-select {
             position: relative;
@@ -671,25 +699,35 @@
             <div class="settings-group">
                 <label class="settings-label">表示期間</label>
                 <div class="date-range-picker">
-                    <input type="date" id="currentStartDate" onchange="updateDisplay()">
+                    <input type="date" id="currentStartDate">
                     <span class="date-separator">〜</span>
-                    <input type="date" id="currentEndDate" onchange="updateDisplay()">
+                    <input type="date" id="currentEndDate">
                 </div>
             </div>
 
             <div class="settings-group">
                 <label class="settings-label">
-                    <input type="checkbox" id="enableComparison" onchange="toggleComparison()" checked>
+                    <input type="checkbox" id="enableComparison" onchange="toggleComparisonUI()" checked>
                     期間比較
                 </label>
                 <div class="comparison-selector" id="comparisonSelector">
                     <span>vs</span>
                     <div class="date-range-picker">
-                        <input type="date" id="prevStartDate" onchange="updateDisplay()">
+                        <input type="date" id="prevStartDate">
                         <span class="date-separator">〜</span>
-                        <input type="date" id="prevEndDate" onchange="updateDisplay()">
+                        <input type="date" id="prevEndDate">
                     </div>
                 </div>
+            </div>
+
+            <div class="settings-group apply-group">
+                <label class="settings-label">&nbsp;</label>
+                <button class="apply-btn" onclick="applyFilters()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    適用
+                </button>
             </div>
 
             <div class="settings-group">
@@ -1226,7 +1264,10 @@
             document.getElementById('projectSelectContainer').classList.remove('open');
             document.getElementById('projectSearchInput').value = '';
             filterProjects(); // リセット
+            // 適用ボタンで反映するため、ここでは updateDisplay() を呼ばない
+        }
 
+        function applyFilters() {
             updateDisplay();
         }
 
@@ -1237,7 +1278,7 @@
             text.textContent = panel.classList.contains('collapsed') ? '設定を表示' : '設定を隠す';
         }
 
-        function toggleComparison() {
+        function toggleComparisonUI() {
             const checkbox = document.getElementById('enableComparison');
             const selector = document.getElementById('comparisonSelector');
             if (checkbox.checked) {
@@ -1245,7 +1286,7 @@
             } else {
                 selector.classList.add('hidden');
             }
-            updateDisplay();
+            // 適用ボタンで反映するため、ここでは updateDisplay() を呼ばない
         }
 
         function isComparisonEnabled() {
