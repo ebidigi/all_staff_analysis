@@ -214,31 +214,29 @@
         }
 
         /* 適用ボタン */
-        .apply-group {
-            align-self: flex-end;
-        }
-
         .apply-btn {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 10px 24px;
+            gap: 4px;
+            padding: 6px 12px;
             background: var(--primary-blue);
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
+            margin-left: 8px;
         }
 
         .apply-btn:hover {
             background: #0d47a1;
         }
 
-        .apply-btn:active {
-            transform: scale(0.98);
+        .apply-btn svg {
+            width: 12px;
+            height: 12px;
         }
 
         /* 検索付きドロップダウン */
@@ -717,17 +715,8 @@
                         <span class="date-separator">〜</span>
                         <input type="date" id="prevEndDate">
                     </div>
+                    <button class="apply-btn" onclick="applyFilters()">適用</button>
                 </div>
-            </div>
-
-            <div class="settings-group apply-group">
-                <label class="settings-label">&nbsp;</label>
-                <button class="apply-btn" onclick="applyFilters()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                    適用
-                </button>
             </div>
 
             <div class="settings-group">
