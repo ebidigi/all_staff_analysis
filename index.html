@@ -80,40 +80,43 @@
             --danger-light: #fecec0;
         }
 
-        /* 同期警告バナー */
-        .sync-warning-banner {
+        /* 同期警告（ヘッダー内） */
+        .sync-warning-indicator {
             display: none;
-            background: linear-gradient(90deg, #fef3cd 0%, #fff3cd 100%);
-            border-bottom: 1px solid #ffc107;
-            padding: 10px 30px;
-            margin-left: 305px;
-            color: #856404;
-            font-size: 13px;
             align-items: center;
-            gap: 10px;
+            gap: 6px;
+            background: #fef3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            padding: 6px 12px;
+            color: #856404;
+            font-size: 12px;
+            cursor: help;
             position: relative;
-            z-index: 40;
         }
-        .sync-warning-banner.show {
+        .sync-warning-indicator.show {
             display: flex;
         }
-        .sync-warning-banner svg {
+        .sync-warning-indicator svg {
             flex-shrink: 0;
         }
-        .sync-warning-banner .warning-text {
-            flex: 1;
+        .sync-warning-indicator .warning-tooltip {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 8px;
+            background: #fff;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 12px 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            white-space: nowrap;
+            z-index: 1000;
+            font-size: 13px;
         }
-        .sync-warning-banner .warning-dismiss {
-            background: none;
-            border: none;
-            color: #856404;
-            cursor: pointer;
-            padding: 4px 8px;
-            font-size: 12px;
-            opacity: 0.7;
-        }
-        .sync-warning-banner .warning-dismiss:hover {
-            opacity: 1;
+        .sync-warning-indicator:hover .warning-tooltip {
+            display: block;
         }
 
         body {
@@ -854,6 +857,15 @@
                 </svg>
                 過去比較
             </a>
+            <div class="sync-warning-indicator" id="syncWarningIndicator">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span>同期遅延</span>
+                <div class="warning-tooltip" id="syncWarningTooltip">同期が遅延している可能性があります</div>
+            </div>
             <div class="last-updated" id="lastUpdated"></div>
             <button class="refresh-btn" id="refreshBtn" onclick="refreshData()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -863,17 +875,6 @@
                 更新
             </button>
         </div>
-    </div>
-
-    <!-- 同期警告バナー -->
-    <div class="sync-warning-banner" id="syncWarningBanner">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/>
-            <line x1="12" y1="17" x2="12.01" y2="17"/>
-        </svg>
-        <span class="warning-text" id="syncWarningText">同期が遅延している可能性があります</span>
-        <button class="warning-dismiss" onclick="dismissSyncWarning()">閉じる</button>
     </div>
 
     <div class="app-container">
@@ -2365,6 +2366,21 @@
             }));
         }
 
+        // 営業日を計算（土日を除く）
+        function countBusinessDays(startDate, endDate) {
+            let count = 0;
+            const current = new Date(startDate);
+            current.setDate(current.getDate() + 1); // 開始日の翌日から
+            while (current <= endDate) {
+                const dayOfWeek = current.getDay();
+                if (dayOfWeek !== 0 && dayOfWeek !== 6) { // 土日以外
+                    count++;
+                }
+                current.setDate(current.getDate() + 1);
+            }
+            return count;
+        }
+
         // 同期遅延チェック
         function checkSyncStatus(records) {
             if (!records || records.length === 0) return;
@@ -2374,6 +2390,7 @@
             if (dates.length === 0) return;
 
             const latestDataDate = new Date(dates[dates.length - 1]);
+            latestDataDate.setHours(0, 0, 0, 0);
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
@@ -2381,21 +2398,16 @@
             const yesterday = new Date(today);
             yesterday.setDate(yesterday.getDate() - 1);
 
-            // 2日以上遅れている場合は警告
-            const diffDays = Math.floor((yesterday - latestDataDate) / (1000 * 60 * 60 * 24));
+            // 営業日ベースで2日以上遅れている場合は警告
+            const businessDaysLate = countBusinessDays(latestDataDate, yesterday);
 
-            if (diffDays >= 2) {
-                const warningText = `⚠️ 同期遅延の可能性: 最新データは ${latestDataDate.toLocaleDateString('ja-JP')} です（${diffDays}日遅れ）。GASトリガーを確認してください。`;
-                document.getElementById('syncWarningText').textContent = warningText;
-                document.getElementById('syncWarningBanner').classList.add('show');
+            if (businessDaysLate >= 2) {
+                const warningText = `最新データは ${latestDataDate.toLocaleDateString('ja-JP')} です（営業日${businessDaysLate}日遅れ）。GASトリガーを確認してください。`;
+                document.getElementById('syncWarningTooltip').textContent = warningText;
+                document.getElementById('syncWarningIndicator').classList.add('show');
             } else {
-                document.getElementById('syncWarningBanner').classList.remove('show');
+                document.getElementById('syncWarningIndicator').classList.remove('show');
             }
-        }
-
-        // 同期警告を閉じる
-        function dismissSyncWarning() {
-            document.getElementById('syncWarningBanner').classList.remove('show');
         }
 
         // 日付をYYYY-MM-DD形式にフォーマット（ローカルタイム）
