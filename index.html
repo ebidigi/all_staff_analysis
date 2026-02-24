@@ -80,6 +80,39 @@
             --danger-light: #fecec0;
         }
 
+        /* 同期警告バナー */
+        .sync-warning-banner {
+            display: none;
+            background: linear-gradient(90deg, #fef3cd 0%, #fff3cd 100%);
+            border-bottom: 1px solid #ffc107;
+            padding: 10px 30px;
+            color: #856404;
+            font-size: 13px;
+            align-items: center;
+            gap: 10px;
+        }
+        .sync-warning-banner.show {
+            display: flex;
+        }
+        .sync-warning-banner svg {
+            flex-shrink: 0;
+        }
+        .sync-warning-banner .warning-text {
+            flex: 1;
+        }
+        .sync-warning-banner .warning-dismiss {
+            background: none;
+            border: none;
+            color: #856404;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        .sync-warning-banner .warning-dismiss:hover {
+            opacity: 1;
+        }
+
         body {
             font-family: 'Noto Sans JP', 'Poppins', sans-serif;
             background: var(--bg-light);
@@ -829,6 +862,17 @@
         </div>
     </div>
 
+    <!-- 同期警告バナー -->
+    <div class="sync-warning-banner" id="syncWarningBanner">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span class="warning-text" id="syncWarningText">同期が遅延している可能性があります</span>
+        <button class="warning-dismiss" onclick="dismissSyncWarning()">閉じる</button>
+    </div>
+
     <div class="app-container">
         <!-- サイドバー -->
         <div class="sidebar" id="sidebar">
@@ -1251,6 +1295,9 @@
                 setAnalysisCache(cacheKey, analysisData);
                 renderAnalysisPage();
                 document.getElementById('lastUpdated').textContent = `最終更新: ${new Date().toLocaleString('ja-JP')} (Turso)`;
+
+                // 同期遅延チェック
+                checkSyncStatus(records);
             } catch (error) {
                 console.error('Turso data load error:', error);
                 document.getElementById('errorMessage').textContent = 'エラー: ' + error.message;
@@ -1736,13 +1783,34 @@
             `;
         }
 
-        // Sort members by employee type: 社員 → インターン → 業務委託
+        // Get members with data in current period
+        function getMembersWithData() {
+            if (!analysisData || !analysisData.records) return new Set();
+            const membersWithData = new Set();
+            analysisData.records.forEach(r => {
+                if (EXCLUDED_MEMBERS.includes(r.name)) return;
+                // Check if member has any actual data
+                if (r.calls > 0 || r.pr > 0 || r.appo > 0 || r.callTime > 0) {
+                    membersWithData.add(r.name);
+                }
+            });
+            return membersWithData;
+        }
+
+        // Sort members by: data existence → employee type → name
         function sortMembersByType(members) {
             const typeOrder = { 'employee': 0, 'intern': 1, 'contractor': 2 };
+            const membersWithData = getMembersWithData();
             return [...members].sort((a, b) => {
+                // First: sort by data existence (with data first)
+                const hasDataA = membersWithData.has(a) ? 0 : 1;
+                const hasDataB = membersWithData.has(b) ? 0 : 1;
+                if (hasDataA !== hasDataB) return hasDataA - hasDataB;
+                // Second: sort by employee type
                 const typeA = typeOrder[getEmployeeType(a)] ?? 3;
                 const typeB = typeOrder[getEmployeeType(b)] ?? 3;
                 if (typeA !== typeB) return typeA - typeB;
+                // Third: sort by name
                 return a.localeCompare(b, 'ja');
             });
         }
@@ -2292,6 +2360,39 @@
                 callToAppo: m.calls > 0 ? Math.round(m.appo / m.calls * 10000) / 100 : 0,
                 callsPerHour: m.callTime > 0 ? Math.round(m.calls / m.callTime * 10) / 10 : 0
             }));
+        }
+
+        // 同期遅延チェック
+        function checkSyncStatus(records) {
+            if (!records || records.length === 0) return;
+
+            // 最新のデータ日付を取得
+            const dates = records.map(r => r.date).filter(d => d).sort();
+            if (dates.length === 0) return;
+
+            const latestDataDate = new Date(dates[dates.length - 1]);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // 前日までのデータがあれば正常（当日分はまだ入力されていない可能性があるため）
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            // 2日以上遅れている場合は警告
+            const diffDays = Math.floor((yesterday - latestDataDate) / (1000 * 60 * 60 * 24));
+
+            if (diffDays >= 2) {
+                const warningText = `⚠️ 同期遅延の可能性: 最新データは ${latestDataDate.toLocaleDateString('ja-JP')} です（${diffDays}日遅れ）。GASトリガーを確認してください。`;
+                document.getElementById('syncWarningText').textContent = warningText;
+                document.getElementById('syncWarningBanner').classList.add('show');
+            } else {
+                document.getElementById('syncWarningBanner').classList.remove('show');
+            }
+        }
+
+        // 同期警告を閉じる
+        function dismissSyncWarning() {
+            document.getElementById('syncWarningBanner').classList.remove('show');
         }
 
         // 日付をYYYY-MM-DD形式にフォーマット（ローカルタイム）

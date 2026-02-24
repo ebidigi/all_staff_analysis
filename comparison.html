@@ -39,6 +39,39 @@
             --border-color: #e4e8ef;
         }
 
+        /* 同期警告バナー */
+        .sync-warning-banner {
+            display: none;
+            background: linear-gradient(90deg, #fef3cd 0%, #fff3cd 100%);
+            border-bottom: 1px solid #ffc107;
+            padding: 10px 30px;
+            color: #856404;
+            font-size: 13px;
+            align-items: center;
+            gap: 10px;
+        }
+        .sync-warning-banner.show {
+            display: flex;
+        }
+        .sync-warning-banner svg {
+            flex-shrink: 0;
+        }
+        .sync-warning-banner .warning-text {
+            flex: 1;
+        }
+        .sync-warning-banner .warning-dismiss {
+            background: none;
+            border: none;
+            color: #856404;
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 12px;
+            opacity: 0.7;
+        }
+        .sync-warning-banner .warning-dismiss:hover {
+            opacity: 1;
+        }
+
         body {
             font-family: 'Noto Sans JP', 'Poppins', sans-serif;
             background: var(--bg-light);
@@ -692,6 +725,17 @@
         </div>
     </div>
 
+    <!-- 同期警告バナー -->
+    <div class="sync-warning-banner" id="syncWarningBanner">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span class="warning-text" id="syncWarningText">同期が遅延している可能性があります</span>
+        <button class="warning-dismiss" onclick="dismissSyncWarning()">閉じる</button>
+    </div>
+
     <div class="app-container">
         <!-- サイドバー -->
         <div class="sidebar" id="sidebar">
@@ -1232,6 +1276,9 @@
                 renderMemberFilter();
                 renderTables();
                 document.getElementById('lastUpdated').textContent = `最終更新: ${new Date().toLocaleString('ja-JP')}`;
+
+                // 同期遅延チェック
+                checkSyncStatus(filteredRecords);
             } catch (error) {
                 console.error('Data load error:', error);
                 document.getElementById('errorMessage').textContent = 'エラー: ' + error.message;
@@ -1766,6 +1813,39 @@
                     renderMemberMonthTable();
                 });
             });
+        }
+
+        // 同期遅延チェック
+        function checkSyncStatus(records) {
+            if (!records || records.length === 0) return;
+
+            // 最新のデータ日付を取得
+            const dates = records.map(r => r.date).filter(d => d).sort();
+            if (dates.length === 0) return;
+
+            const latestDataDate = new Date(dates[dates.length - 1]);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // 前日までのデータがあれば正常（当日分はまだ入力されていない可能性があるため）
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            // 2日以上遅れている場合は警告
+            const diffDays = Math.floor((yesterday - latestDataDate) / (1000 * 60 * 60 * 24));
+
+            if (diffDays >= 2) {
+                const warningText = `⚠️ 同期遅延の可能性: 最新データは ${latestDataDate.toLocaleDateString('ja-JP')} です（${diffDays}日遅れ）。GASトリガーを確認してください。`;
+                document.getElementById('syncWarningText').textContent = warningText;
+                document.getElementById('syncWarningBanner').classList.add('show');
+            } else {
+                document.getElementById('syncWarningBanner').classList.remove('show');
+            }
+        }
+
+        // 同期警告を閉じる
+        function dismissSyncWarning() {
+            document.getElementById('syncWarningBanner').classList.remove('show');
         }
 
         document.addEventListener('DOMContentLoaded', async function() {

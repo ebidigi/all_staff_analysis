@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Environment files
+.env
+*.env
+
+# Dependencies
+node_modules/
+
+# Claude Code
+.claude/
+
+# Data files
+*.csv
+turso/data/
