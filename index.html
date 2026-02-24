@@ -2235,14 +2235,14 @@
             }
 
             const chartConfig = {
-                calls: { label: '架電数', color: '#1155cc', field: 'calls' },
-                pr: { label: 'PR数', color: '#00a2da', field: 'pr' },
-                appo: { label: 'アポ数', color: '#86aaec', field: 'appo' },
-                callTime: { label: '稼働時間 (H)', color: '#9b59b6', field: 'callTime' },
-                callToPR: { label: '架電toPR率 (%)', color: '#ede07d', field: 'callToPR' },
-                prToAppo: { label: 'PRtoアポ率 (%)', color: '#00a2da', field: 'prToAppo' },
-                callToAppo: { label: '架電toアポ率 (%)', color: '#e04f24', field: 'callToAppo' },
-                callsPerHour: { label: '架電数/H', color: '#ef947a', field: 'callsPerHour' }
+                calls: { label: '架電数', color: '#1155cc', field: 'calls', threshold: null },
+                pr: { label: 'PR数', color: '#00a2da', field: 'pr', threshold: null },
+                appo: { label: 'アポ数', color: '#86aaec', field: 'appo', threshold: null },
+                callTime: { label: '稼働時間 (H)', color: '#9b59b6', field: 'callTime', threshold: null },
+                callToPR: { label: '架電toPR率 (%)', color: '#ede07d', field: 'callToPR', threshold: 10 },
+                prToAppo: { label: 'PRtoアポ率 (%)', color: '#00a2da', field: 'prToAppo', threshold: 30 },
+                callToAppo: { label: '架電toアポ率 (%)', color: '#e04f24', field: 'callToAppo', threshold: 3 },
+                callsPerHour: { label: '架電数/H', color: '#ef947a', field: 'callsPerHour', threshold: 15 }
             };
 
             const config = chartConfig[currentMemberChartType] || chartConfig.calls;
@@ -2269,6 +2269,36 @@
 
             const ctx = document.getElementById('memberCompareChart').getContext('2d');
 
+            // 閾値線を描画するプラグイン
+            const thresholdLinePlugin = {
+                id: 'thresholdLine',
+                afterDraw: (chart) => {
+                    if (!config.threshold) return;
+
+                    const ctx = chart.ctx;
+                    const xScale = chart.scales.x;
+                    const yScale = chart.scales.y;
+
+                    const xPosition = xScale.getPixelForValue(config.threshold);
+
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(xPosition, yScale.top);
+                    ctx.lineTo(xPosition, yScale.bottom);
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#e04f24';
+                    ctx.setLineDash([6, 4]);
+                    ctx.stroke();
+
+                    // ラベル
+                    ctx.fillStyle = '#e04f24';
+                    ctx.font = '11px Poppins, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`目標: ${config.threshold}`, xPosition, yScale.top - 5);
+                    ctx.restore();
+                }
+            };
+
             memberCompareChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -2281,10 +2311,14 @@
                         borderWidth: 1
                     }]
                 },
+                plugins: [thresholdLinePlugin],
                 options: {
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: {
+                        padding: { top: 20 }
+                    },
                     plugins: {
                         legend: {
                             display: false
