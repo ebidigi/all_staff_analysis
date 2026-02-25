@@ -315,6 +315,108 @@
             background: var(--bg-white);
         }
 
+        /* 検索付きドロップダウン */
+        .searchable-select {
+            position: relative;
+            width: 100%;
+        }
+
+        .searchable-select-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            background: var(--bg-white);
+            cursor: pointer;
+            color: var(--text-dark);
+        }
+
+        .searchable-select-trigger:hover {
+            border-color: var(--gray-300);
+        }
+
+        .searchable-select-trigger svg {
+            flex-shrink: 0;
+            transition: transform 0.2s;
+        }
+
+        .searchable-select.open .searchable-select-trigger svg {
+            transform: rotate(180deg);
+        }
+
+        .searchable-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 100;
+            display: none;
+            max-height: 280px;
+            overflow: hidden;
+        }
+
+        .searchable-select.open .searchable-select-dropdown {
+            display: block;
+        }
+
+        .searchable-select-search {
+            padding: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .searchable-select-search input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        .searchable-select-search input:focus {
+            border-color: var(--primary-blue);
+        }
+
+        .searchable-select-options {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .searchable-select-option {
+            padding: 10px 12px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.15s;
+        }
+
+        .searchable-select-option:hover {
+            background: var(--gray-100);
+        }
+
+        .searchable-select-option.selected {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .searchable-select-option.hidden {
+            display: none;
+        }
+
+        .searchable-select-empty {
+            padding: 16px;
+            text-align: center;
+            color: var(--text-light);
+            font-size: 0.85rem;
+        }
+
         .month-selector {
             display: flex;
             flex-wrap: wrap;
@@ -777,9 +879,21 @@
 
             <div class="sidebar-section">
                 <div class="sidebar-section-title">案件</div>
-                <select id="projectFilter" onchange="renderTables()">
-                    <option value="">全案件</option>
-                </select>
+                <div class="searchable-select" id="projectSelectContainer">
+                    <div class="searchable-select-trigger" onclick="toggleProjectDropdown()">
+                        <span id="projectSelectLabel">全案件</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                    </div>
+                    <div class="searchable-select-dropdown">
+                        <div class="searchable-select-search">
+                            <input type="text" id="projectSearchInput" placeholder="案件を検索..." oninput="filterProjectOptions()">
+                        </div>
+                        <div class="searchable-select-options" id="projectOptions"></div>
+                    </div>
+                </div>
+                <input type="hidden" id="projectFilter" value="">
             </div>
 
             <div class="sidebar-section">
@@ -1310,11 +1424,71 @@
 
         function populateProjectFilter() {
             if (!rawData || !rawData.filters) return;
-            const select = document.getElementById('projectFilter');
-            select.innerHTML = '<option value="">全案件</option>';
-            (rawData.filters.projects || []).forEach(p => {
-                select.innerHTML += `<option value="${p}">${p}</option>`;
+            const optionsContainer = document.getElementById('projectOptions');
+            const projects = rawData.filters.projects || [];
+
+            let html = `<div class="searchable-select-option selected" data-value="" onclick="selectProject('')">全案件</div>`;
+            html += projects.map(p =>
+                `<div class="searchable-select-option" data-value="${p}" onclick="selectProject('${p.replace(/'/g, "\\'")}')">${p}</div>`
+            ).join('');
+            optionsContainer.innerHTML = html;
+
+            // ドロップダウン外クリックで閉じる
+            document.addEventListener('click', function(e) {
+                const container = document.getElementById('projectSelectContainer');
+                if (container && !container.contains(e.target)) {
+                    container.classList.remove('open');
+                }
             });
+        }
+
+        function toggleProjectDropdown() {
+            const container = document.getElementById('projectSelectContainer');
+            container.classList.toggle('open');
+            if (container.classList.contains('open')) {
+                document.getElementById('projectSearchInput').focus();
+            }
+        }
+
+        function filterProjectOptions() {
+            const searchText = document.getElementById('projectSearchInput').value.toLowerCase();
+            const options = document.querySelectorAll('#projectOptions .searchable-select-option');
+
+            let visibleCount = 0;
+            options.forEach(option => {
+                const text = option.textContent.toLowerCase();
+                const matches = text.includes(searchText);
+                option.classList.toggle('hidden', !matches);
+                if (matches) visibleCount++;
+            });
+
+            let emptyMsg = document.querySelector('#projectOptions .searchable-select-empty');
+            if (visibleCount === 0) {
+                if (!emptyMsg) {
+                    emptyMsg = document.createElement('div');
+                    emptyMsg.className = 'searchable-select-empty';
+                    emptyMsg.textContent = '該当する案件がありません';
+                    document.getElementById('projectOptions').appendChild(emptyMsg);
+                }
+                emptyMsg.style.display = 'block';
+            } else if (emptyMsg) {
+                emptyMsg.style.display = 'none';
+            }
+        }
+
+        function selectProject(value) {
+            const options = document.querySelectorAll('#projectOptions .searchable-select-option');
+            options.forEach(option => {
+                option.classList.toggle('selected', option.dataset.value === value);
+            });
+
+            document.getElementById('projectFilter').value = value;
+            document.getElementById('projectSelectLabel').textContent = value || '全案件';
+            document.getElementById('projectSelectContainer').classList.remove('open');
+            document.getElementById('projectSearchInput').value = '';
+            filterProjectOptions();
+
+            renderTables();
         }
 
         // 種別フィルターを描画

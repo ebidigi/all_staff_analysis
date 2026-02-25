@@ -214,6 +214,12 @@
         }
 
         /* 適用ボタン */
+        .apply-group {
+            display: flex;
+            align-items: flex-end;
+            padding-bottom: 2px;
+        }
+
         .apply-btn {
             display: inline-flex;
             align-items: center;
@@ -227,7 +233,7 @@
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
-            margin-top: 8px;
+            white-space: nowrap;
         }
 
         .apply-btn:hover {
@@ -711,6 +717,9 @@
                         <input type="date" id="prevEndDate">
                     </div>
                 </div>
+            </div>
+
+            <div class="settings-group apply-group">
                 <button class="apply-btn" onclick="applyFilters()">適用</button>
             </div>
 
@@ -819,11 +828,11 @@
 
         function setupNavigationLinks() {
             const currentPath = window.location.pathname;
-            const isLocalDeploy = currentPath.includes('all_staff_');
+            const isLocalFile = window.location.protocol === 'file:';
 
             const backLink = document.getElementById('backToDashboard');
             if (backLink) {
-                backLink.href = isLocalDeploy ? 'all_staff_analysis.html' : 'index.html';
+                backLink.href = isLocalFile ? 'all_staff_analysis.html' : 'index.html';
             }
         }
 
