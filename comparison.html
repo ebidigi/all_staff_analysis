@@ -855,7 +855,18 @@
         <div class="sidebar" id="sidebar">
             <div class="sidebar-section">
                 <div class="sidebar-section-title">表示年度</div>
-                <select id="fiscalYear" onchange="loadData()"></select>
+                <div class="searchable-select" id="fiscalYearContainer">
+                    <div class="searchable-select-trigger" onclick="toggleFiscalYearDropdown()">
+                        <span id="fiscalYearLabel">読み込み中...</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                    </div>
+                    <div class="searchable-select-dropdown">
+                        <div class="searchable-select-options" id="fiscalYearOptions"></div>
+                    </div>
+                </div>
+                <input type="hidden" id="fiscalYear" value="">
             </div>
 
             <div class="sidebar-section">
@@ -1077,17 +1088,43 @@
 
         // 年度セレクタを初期化
         function initFiscalYearSelector() {
-            const select = document.getElementById('fiscalYear');
             const currentFY = getCurrentFiscalYear();
-
-            // データは2024年5月から存在するので2024年度から
             const startFY = 2024;
 
-            select.innerHTML = '';
+            document.getElementById('fiscalYear').value = currentFY;
+            document.getElementById('fiscalYearLabel').textContent = `${currentFY}年度（当年度）`;
+
+            let html = '';
             for (let fy = currentFY; fy >= startFY; fy--) {
                 const label = fy === currentFY ? `${fy}年度（当年度）` : `${fy}年度`;
-                select.innerHTML += `<option value="${fy}">${label}</option>`;
+                const selectedClass = fy === currentFY ? ' selected' : '';
+                html += `<div class="searchable-select-option${selectedClass}" data-value="${fy}" onclick="selectFiscalYear(${fy})">${label}</div>`;
             }
+            document.getElementById('fiscalYearOptions').innerHTML = html;
+        }
+
+        function toggleFiscalYearDropdown() {
+            const container = document.getElementById('fiscalYearContainer');
+            // 他のドロップダウンを閉じる
+            document.querySelectorAll('.searchable-select.open').forEach(el => {
+                if (el !== container) el.classList.remove('open');
+            });
+            container.classList.toggle('open');
+        }
+
+        function selectFiscalYear(fy) {
+            document.getElementById('fiscalYear').value = fy;
+            const currentFY = getCurrentFiscalYear();
+            const label = fy === currentFY ? `${fy}年度（当年度）` : `${fy}年度`;
+            document.getElementById('fiscalYearLabel').textContent = label;
+
+            // 選択状態を更新
+            document.querySelectorAll('#fiscalYearOptions .searchable-select-option').forEach(opt => {
+                opt.classList.toggle('selected', parseInt(opt.dataset.value) === fy);
+            });
+
+            document.getElementById('fiscalYearContainer').classList.remove('open');
+            loadData();
         }
 
         // 月ボタンのイベントを初期化
@@ -1435,9 +1472,13 @@
 
             // ドロップダウン外クリックで閉じる
             document.addEventListener('click', function(e) {
-                const container = document.getElementById('projectSelectContainer');
-                if (container && !container.contains(e.target)) {
-                    container.classList.remove('open');
+                const projectContainer = document.getElementById('projectSelectContainer');
+                if (projectContainer && !projectContainer.contains(e.target)) {
+                    projectContainer.classList.remove('open');
+                }
+                const fyContainer = document.getElementById('fiscalYearContainer');
+                if (fyContainer && !fyContainer.contains(e.target)) {
+                    fyContainer.classList.remove('open');
                 }
             });
         }
