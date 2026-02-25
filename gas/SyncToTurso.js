@@ -1,14 +1,19 @@
 /**
  * Google Apps Script: Sheets → Turso 同期スクリプト
  *
- * 機能: 実績rawdataシートの新規行をTursoデータベースに5分毎に同期
+ * 機能: 実績rawdataシートのデータをTursoデータベースに5分毎に同期
+ *
+ * 同期方式: 日付ベース + UPSERT（INSERT OR REPLACE）
+ *   - スプレッドシート全行をスキャンし、直近SYNC_DAYS日分のデータを毎回同期
+ *   - DB側のUNIQUE制約 (member_name, project_name, input_date) で重複を防止
+ *   - 行の挿入位置に依存しないため、途中行への追加・編集にも対応
  *
  * セットアップ手順:
  * 1. GASエディタでこのファイルの内容をコピー
  * 2. スクリプトプロパティに以下を設定:
  *    - TURSO_DATABASE_URL: libsql://all-staff-rawdata-ebidigi.aws-ap-northeast-1.turso.io
  *    - TURSO_AUTH_TOKEN: (Tursoダッシュボードから取得)
- * 3. トリガーを設定: syncPerformanceToTurso を5分毎に実行
+ * 3. トリガーを設定: syncPerformanceToTurso を15分毎に実行
  */
 
 // ==================== 設定 ====================
@@ -16,30 +21,38 @@
 const CONFIG = {
   SPREADSHEET_ID: '1Qo9LvDqUgkPVcaoDN-t4p8YKryoILKEMdMugDlpDTIQ',
   SHEET_NAME: '実績rawdata',
-  // 同期位置を記録するプロパティキー
-  LAST_SYNC_ROW_KEY: 'turso_last_sync_row_performance',
   // ヘッダー行をスキップするため2行目から開始
-  START_ROW: 2
+  START_ROW: 2,
+  // 同期対象の日数（今日からN日前まで）
+  SYNC_DAYS: 7,
+  // バッチサイズ（1リクエストあたりのINSERT数）
+  BATCH_SIZE: 50
 };
 
 // ==================== 営業時間チェック ====================
 
 /**
- * 営業時間内かチェック（7時〜20時）
- * @returns {boolean} 営業時間内ならtrue
+ * 稼働時間内かチェック（8時〜21時）
+ * 入力は主に12〜13時と17時以降に集中するため、
+ * 21時〜翌8時は同期不要
+ * @returns {boolean} 稼働時間内ならtrue
  */
 function isBusinessHours() {
   const hour = new Date().getHours();
-  return hour >= 7 && hour < 20;
+  return hour >= 8 && hour < 21;
 }
 
 // ==================== メイン関数 ====================
 
 /**
  * 実績rawdataをTursoに同期（5分毎トリガー用）
+ *
+ * 直近SYNC_DAYS日分のデータをスプレッドシートから読み取り、
+ * INSERT OR REPLACEでTursoに同期する。
+ * DB側のUNIQUE制約により、同じデータの重複挿入は自動で上書きされる。
  */
 function syncPerformanceToTurso() {
-  // 営業時間外（20時〜翌7時）はスキップ
+  // 稼働時間外（21時〜翌8時）はスキップ
   if (!isBusinessHours()) {
     Logger.log('営業時間外のためスキップ: ' + new Date().getHours() + '時');
     return;
@@ -61,52 +74,68 @@ function syncPerformanceToTurso() {
     return;
   }
 
-  // 最終同期行を取得（初回は開始行-1）
-  let lastSyncRow = parseInt(scriptProps.getProperty(CONFIG.LAST_SYNC_ROW_KEY) || (CONFIG.START_ROW - 1));
-  const lastRow = sheet.getLastRow();
+  // 同期対象の日付範囲を計算
+  const today = new Date();
+  const syncFromDate = new Date(today);
+  syncFromDate.setDate(syncFromDate.getDate() - CONFIG.SYNC_DAYS);
+  const syncFromStr = formatDate(syncFromDate);
 
-  // 新規データがなければ終了
-  if (lastRow <= lastSyncRow) {
-    Logger.log('No new data to sync. Last sync row: ' + lastSyncRow);
+  Logger.log('同期対象期間: ' + syncFromStr + ' 〜 今日');
+
+  // スプレッドシート全行を読み取り
+  const lastRow = sheet.getLastRow();
+  if (lastRow < CONFIG.START_ROW) {
+    Logger.log('No data in sheet');
     return;
   }
 
-  // 新規行を取得
-  const newRowCount = lastRow - lastSyncRow;
-  const range = sheet.getRange(lastSyncRow + 1, 1, newRowCount, 8); // A:H列（8列）
-  const newData = range.getValues();
+  const allData = sheet.getRange(CONFIG.START_ROW, 1, lastRow - CONFIG.START_ROW + 1, 8).getValues();
 
-  Logger.log('Found ' + newRowCount + ' new rows to sync');
-
-  // Tursoに挿入
-  let insertedCount = 0;
-  let errorCount = 0;
-
-  for (let i = 0; i < newData.length; i++) {
-    const row = newData[i];
+  // 同期対象の行をフィルタ（日付がsyncFromDate以降のもの）
+  const targetRows = [];
+  for (let i = 0; i < allData.length; i++) {
+    const row = allData[i];
 
     // 空行をスキップ
-    if (!row[0] && !row[1]) {
-      continue;
-    }
+    if (!row[0] && !row[1]) continue;
 
-    try {
-      const success = insertPerformanceRecord(tursoUrl, tursoToken, row);
-      if (success) {
-        insertedCount++;
-      } else {
-        errorCount++;
-      }
-    } catch (e) {
-      Logger.log('Error inserting row ' + (lastSyncRow + 1 + i) + ': ' + e.message);
-      errorCount++;
+    // 日付を解析
+    const inputDate = row[2];
+    if (!inputDate) continue;
+
+    const d = new Date(inputDate);
+    if (isNaN(d.getTime())) continue;
+
+    const dateStr = formatDate(d);
+    if (dateStr >= syncFromStr) {
+      targetRows.push(row);
     }
   }
 
-  // 同期位置を更新
-  scriptProps.setProperty(CONFIG.LAST_SYNC_ROW_KEY, lastRow.toString());
+  Logger.log('同期対象: ' + targetRows.length + '行（全' + allData.length + '行中）');
 
-  const summary = 'Turso同期完了: ' + insertedCount + '件挿入, ' + errorCount + '件エラー';
+  if (targetRows.length === 0) {
+    Logger.log('同期対象データなし');
+    return;
+  }
+
+  // バッチでUPSERT
+  let upsertedCount = 0;
+  let errorCount = 0;
+
+  for (let i = 0; i < targetRows.length; i += CONFIG.BATCH_SIZE) {
+    const batch = targetRows.slice(i, i + CONFIG.BATCH_SIZE);
+    try {
+      const result = upsertBatch(tursoUrl, tursoToken, batch);
+      upsertedCount += result.success;
+      errorCount += result.errors;
+    } catch (e) {
+      Logger.log('Batch error at index ' + i + ': ' + e.message);
+      errorCount += batch.length;
+    }
+  }
+
+  const summary = 'Turso同期完了: ' + upsertedCount + '件同期, ' + errorCount + '件エラー（対象期間: ' + syncFromStr + '〜）';
   Logger.log(summary);
 
   // エラーがあればSlack通知
@@ -118,74 +147,59 @@ function syncPerformanceToTurso() {
 // ==================== Turso API ====================
 
 /**
- * 実績データをTursoに挿入
- * @param {string} tursoUrl - Turso HTTP API URL
- * @param {string} tursoToken - 認証トークン
- * @param {Array} row - [担当名, 案件名, 入力日, 架電時間, 架電数, PR数, アポ数, 定性所感]
- * @returns {boolean} 成功したらtrue
- */
-function insertPerformanceRecord(tursoUrl, tursoToken, row) {
-  const [memberName, projectName, inputDate, callHours, callCount, prCount, appointmentCount, qualitativeFeedback] = row;
-
-  // 日付をISO形式に変換
-  let formattedDate = null;
-  if (inputDate) {
-    const d = new Date(inputDate);
-    if (!isNaN(d.getTime())) {
-      formattedDate = d.toISOString().split('T')[0];
-    }
-  }
-
-  // SQLパラメータ
-  const sql = `INSERT INTO performance_rawdata
-    (member_name, project_name, input_date, call_hours, call_count, pr_count, appointment_count, qualitative_feedback, data_source)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-
-  const args = [
-    memberName || '',
-    projectName || '',
-    formattedDate,
-    parseFloat(callHours) || 0,
-    parseInt(callCount) || 0,
-    parseInt(prCount) || 0,
-    parseInt(appointmentCount) || 0,
-    qualitativeFeedback || null,
-    'new'
-  ];
-
-  return executeTursoQuery(tursoUrl, tursoToken, sql, args);
-}
-
-/**
- * Turso HTTP APIでSQLを実行
+ * 複数行をバッチでUPSERT
  * @param {string} tursoUrl - Turso URL
  * @param {string} tursoToken - 認証トークン
- * @param {string} sql - SQL文
- * @param {Array} args - パラメータ配列
- * @returns {boolean} 成功したらtrue
+ * @param {Array[]} rows - 行データの配列
+ * @returns {{success: number, errors: number}}
  */
-function executeTursoQuery(tursoUrl, tursoToken, sql, args) {
-  // HTTP API エンドポイント（v3 pipeline）
+function upsertBatch(tursoUrl, tursoToken, rows) {
   const httpUrl = tursoUrl.replace('libsql://', 'https://') + '/v3/pipeline';
 
-  const payload = {
-    requests: [
-      {
-        type: 'execute',
-        stmt: {
-          sql: sql,
-          args: args.map(arg => {
-            if (arg === null) return { type: 'null' };
-            if (typeof arg === 'number') {
-              return Number.isInteger(arg) ? { type: 'integer', value: String(arg) } : { type: 'float', value: arg };
-            }
-            return { type: 'text', value: String(arg) };
-          })
-        }
-      },
-      { type: 'close' }
-    ]
-  };
+  const requests = [];
+  for (const row of rows) {
+    const [memberName, projectName, inputDate, callHours, callCount, prCount, appointmentCount, qualitativeFeedback] = row;
+
+    // 日付とタイムスタンプを解析
+    let formattedDate = null;
+    let formattedTimestamp = null;
+    if (inputDate) {
+      const d = new Date(inputDate);
+      if (!isNaN(d.getTime())) {
+        formattedDate = d.toISOString().split('T')[0];
+        // YYYY-MM-DD HH:MM:SS 形式のタイムスタンプ
+        formattedTimestamp = formattedDate + ' '
+          + String(d.getHours()).padStart(2, '0') + ':'
+          + String(d.getMinutes()).padStart(2, '0') + ':'
+          + String(d.getSeconds()).padStart(2, '0');
+      }
+    }
+
+    const args = [
+      memberName || '',
+      projectName || '',
+      formattedDate,
+      formattedTimestamp,
+      parseFloat(callHours) || 0,
+      parseInt(callCount) || 0,
+      parseInt(prCount) || 0,
+      parseInt(appointmentCount) || 0,
+      qualitativeFeedback || null,
+      'new'
+    ];
+
+    requests.push({
+      type: 'execute',
+      stmt: {
+        sql: `INSERT OR REPLACE INTO performance_rawdata
+          (member_name, project_name, input_date, input_timestamp, call_hours, call_count, pr_count, appointment_count, qualitative_feedback, data_source, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        args: args.map(toTursoArg)
+      }
+    });
+  }
+
+  requests.push({ type: 'close' });
 
   const options = {
     method: 'POST',
@@ -193,7 +207,7 @@ function executeTursoQuery(tursoUrl, tursoToken, sql, args) {
     headers: {
       'Authorization': 'Bearer ' + tursoToken
     },
-    payload: JSON.stringify(payload),
+    payload: JSON.stringify({ requests: requests }),
     muteHttpExceptions: true
   };
 
@@ -202,18 +216,50 @@ function executeTursoQuery(tursoUrl, tursoToken, sql, args) {
 
   if (statusCode !== 200) {
     Logger.log('Turso API error: ' + statusCode + ' - ' + response.getContentText());
-    return false;
+    return { success: 0, errors: rows.length };
   }
 
   const result = JSON.parse(response.getContentText());
 
-  // エラーチェック
-  if (result.results && result.results[0] && result.results[0].type === 'error') {
-    Logger.log('Turso SQL error: ' + result.results[0].error.message);
-    return false;
+  let success = 0;
+  let errors = 0;
+  for (const r of result.results) {
+    if (r.type === 'ok' && r.response && r.response.type === 'execute') {
+      success++;
+    } else if (r.type === 'error') {
+      Logger.log('SQL error: ' + (r.error ? r.error.message : 'unknown'));
+      errors++;
+    }
   }
 
-  return true;
+  return { success, errors };
+}
+
+/**
+ * JavaScript値をTurso APIの引数形式に変換
+ * @param {*} arg - 変換する値
+ * @returns {object} Turso引数オブジェクト
+ */
+function toTursoArg(arg) {
+  if (arg === null || arg === undefined) return { type: 'null' };
+  if (typeof arg === 'number') {
+    return Number.isInteger(arg)
+      ? { type: 'integer', value: String(arg) }
+      : { type: 'float', value: arg };
+  }
+  return { type: 'text', value: String(arg) };
+}
+
+/**
+ * 日付をYYYY-MM-DD形式に変換
+ * @param {Date} d - 日付オブジェクト
+ * @returns {string} YYYY-MM-DD形式の文字列
+ */
+function formatDate(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return year + '-' + month + '-' + day;
 }
 
 // ==================== Slack通知 ====================
@@ -254,35 +300,68 @@ function sendSlackNotification(message) {
 // ==================== ユーティリティ ====================
 
 /**
- * 同期位置をリセット（デバッグ用）
- */
-function resetSyncPosition() {
-  const scriptProps = PropertiesService.getScriptProperties();
-  scriptProps.deleteProperty(CONFIG.LAST_SYNC_ROW_KEY);
-  Logger.log('Sync position reset');
-}
-
-/**
  * 現在の同期状態を確認（デバッグ用）
  */
 function checkSyncStatus() {
-  const scriptProps = PropertiesService.getScriptProperties();
-  const lastSyncRow = scriptProps.getProperty(CONFIG.LAST_SYNC_ROW_KEY) || 'Not set';
-
   const sheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getSheetByName(CONFIG.SHEET_NAME);
   const lastRow = sheet ? sheet.getLastRow() : 'Sheet not found';
-
-  Logger.log('Last sync row: ' + lastSyncRow);
   Logger.log('Current last row: ' + lastRow);
-  Logger.log('Pending rows: ' + (lastRow - parseInt(lastSyncRow || 0)));
+  Logger.log('Sync range: last ' + CONFIG.SYNC_DAYS + ' days');
 }
 
 /**
- * 手動で全データを再同期（初回セットアップ用）
- * 注意: 既存データと重複する可能性があるため、通常は使用しない
+ * 指定日以降のデータを再同期（手動リカバリ用）
+ * GASエディタで実行: manualSyncFromDate('2026-02-01')
+ * @param {string} fromDateStr - 開始日（YYYY-MM-DD形式）
  */
-function fullResync() {
+function manualSyncFromDate(fromDateStr) {
   const scriptProps = PropertiesService.getScriptProperties();
-  scriptProps.setProperty(CONFIG.LAST_SYNC_ROW_KEY, (CONFIG.START_ROW - 1).toString());
-  Logger.log('Full resync initiated. Run syncPerformanceToTurso() to sync all data.');
+  const tursoUrl = scriptProps.getProperty('TURSO_DATABASE_URL');
+  const tursoToken = scriptProps.getProperty('TURSO_AUTH_TOKEN');
+
+  if (!tursoUrl || !tursoToken) {
+    Logger.log('ERROR: Turso credentials not configured');
+    return;
+  }
+
+  const sheet = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getSheetByName(CONFIG.SHEET_NAME);
+  if (!sheet) {
+    Logger.log('ERROR: Sheet not found');
+    return;
+  }
+
+  const lastRow = sheet.getLastRow();
+  const allData = sheet.getRange(CONFIG.START_ROW, 1, lastRow - CONFIG.START_ROW + 1, 8).getValues();
+
+  const targetRows = [];
+  for (const row of allData) {
+    if (!row[0] && !row[1]) continue;
+    if (!row[2]) continue;
+
+    const d = new Date(row[2]);
+    if (isNaN(d.getTime())) continue;
+
+    if (formatDate(d) >= fromDateStr) {
+      targetRows.push(row);
+    }
+  }
+
+  Logger.log('手動同期対象: ' + targetRows.length + '行（' + fromDateStr + '以降）');
+
+  let upsertedCount = 0;
+  let errorCount = 0;
+
+  for (let i = 0; i < targetRows.length; i += CONFIG.BATCH_SIZE) {
+    const batch = targetRows.slice(i, i + CONFIG.BATCH_SIZE);
+    try {
+      const result = upsertBatch(tursoUrl, tursoToken, batch);
+      upsertedCount += result.success;
+      errorCount += result.errors;
+    } catch (e) {
+      Logger.log('Batch error: ' + e.message);
+      errorCount += batch.length;
+    }
+  }
+
+  Logger.log('手動同期完了: ' + upsertedCount + '件同期, ' + errorCount + '件エラー');
 }

@@ -1308,8 +1308,8 @@
                 renderAnalysisPage();
                 document.getElementById('lastUpdated').textContent = `最終更新: ${new Date().toLocaleString('ja-JP')} (Turso)`;
 
-                // 同期遅延チェック
-                checkSyncStatus(records);
+                // 同期遅延チェック（フィルターに依存しない）
+                checkSyncStatus();
             } catch (error) {
                 console.error('Turso data load error:', error);
                 document.getElementById('errorMessage').textContent = 'エラー: ' + error.message;
@@ -2423,15 +2423,14 @@
             return count;
         }
 
-        // 同期遅延チェック
-        function checkSyncStatus(records) {
-            if (!records || records.length === 0) return;
+        // 同期遅延チェック（DB全体の最新日付で判定、フィルターに依存しない）
+        async function checkSyncStatus() {
+            try {
+                const sql = `SELECT MAX(input_date) as latest_date FROM performance_rawdata`;
+                const rows = await queryTurso(sql, []);
+                if (!rows || rows.length === 0 || !rows[0].latest_date) return;
 
-            // 最新のデータ日付を取得
-            const dates = records.map(r => r.date).filter(d => d).sort();
-            if (dates.length === 0) return;
-
-            const latestDataDate = new Date(dates[dates.length - 1]);
+                const latestDataDate = new Date(rows[0].latest_date);
             latestDataDate.setHours(0, 0, 0, 0);
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -2449,6 +2448,9 @@
                 document.getElementById('syncWarningIndicator').classList.add('show');
             } else {
                 document.getElementById('syncWarningIndicator').classList.remove('show');
+            }
+            } catch (e) {
+                console.error('Sync status check error:', e);
             }
         }
 

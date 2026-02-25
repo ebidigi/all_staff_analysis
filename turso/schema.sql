@@ -98,6 +98,11 @@ CREATE INDEX IF NOT EXISTS idx_performance_member ON performance_rawdata(member_
 CREATE INDEX IF NOT EXISTS idx_performance_project ON performance_rawdata(project_name);
 CREATE INDEX IF NOT EXISTS idx_performance_date ON performance_rawdata(input_date);
 
+-- UNIQUE制約: 同一人物・同一案件・同一タイムスタンプのデータは1件のみ
+-- 同じ日にAM/PM等で複数入力がある場合はタイムスタンプが異なるため許容される
+-- INSERT OR REPLACE で upsert 動作を実現
+CREATE UNIQUE INDEX IF NOT EXISTS idx_performance_unique ON performance_rawdata(member_name, project_name, input_timestamp);
+
 CREATE INDEX IF NOT EXISTS idx_sales_rep ON sales_report_rawdata(sales_rep);
 CREATE INDEX IF NOT EXISTS idx_sales_project ON sales_report_rawdata(project_name);
 CREATE INDEX IF NOT EXISTS idx_sales_acquisition_date ON sales_report_rawdata(acquisition_date);
