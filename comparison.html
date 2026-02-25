@@ -1559,13 +1559,31 @@
             renderSelectedTags();
         }
 
-        // Sort members by employee type: 社員 → インターン → 業務委託
+        // Sort members: 当月稼働あり → 種別(社員→インターン→業務委託) → 名前順
         function sortMembersByType(members) {
+            // 当月稼働しているメンバーを取得
+            const now = new Date();
+            const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            const activeMembers = new Set();
+            if (rawData && rawData.records) {
+                rawData.records.forEach(r => {
+                    if (r.date && r.date.startsWith(currentMonthStr)) {
+                        activeMembers.add(r.name);
+                    }
+                });
+            }
+
             const typeOrder = { 'employee': 0, 'intern': 1, 'contractor': 2 };
             return [...members].sort((a, b) => {
+                // 1. 当月稼働あり → なし
+                const activeA = activeMembers.has(a) ? 0 : 1;
+                const activeB = activeMembers.has(b) ? 0 : 1;
+                if (activeA !== activeB) return activeA - activeB;
+                // 2. 種別順
                 const typeA = typeOrder[getEmployeeType(a)] ?? 3;
                 const typeB = typeOrder[getEmployeeType(b)] ?? 3;
                 if (typeA !== typeB) return typeA - typeB;
+                // 3. 名前順
                 return a.localeCompare(b, 'ja');
             });
         }
