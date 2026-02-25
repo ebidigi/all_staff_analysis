@@ -2045,7 +2045,19 @@
             }
         }
 
+        // ナビゲーションリンクをローカル/GitHub Pages用に切り替え
+        function setupNavigationLinks() {
+            const isLocalFile = window.location.protocol === 'file:';
+            if (!isLocalFile) return;
+            document.querySelectorAll('a.nav-btn').forEach(a => {
+                const href = a.getAttribute('href');
+                if (href === 'index.html') a.href = 'all_staff_analysis.html';
+                if (href === 'presentation.html') a.href = 'all_staff_presentation.html';
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', async function() {
+            setupNavigationLinks();
             initSidebar();
             initFiscalYearSelector();
             initMonthSelector();
